@@ -36,8 +36,8 @@ jobs:
           curl -fsSLO https://github.com/${{ github.repository }}/releases/latest/download/ai-greek-subs-fletouris-installer.sh
           sudo bash ai-greek-subs-fletouris-installer.sh
           ```
-          Docker: `ghcr.io/${{ github.repository_owner }}/ai-greek-subs-fletouris:${{ github.ref_name }}` — see [INSTALL.md](https://github.com/${{ github.repository }}/blob/main/INSTALL.md).
           MD
+          echo "Docker: \`ghcr.io/${{ github.repository_owner }}/ai-greek-subs-fletouris:$v\` (or \`:latest\`) — see [INSTALL.md](https://github.com/${{ github.repository }}/blob/main/INSTALL.md)." >> notes.md
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
