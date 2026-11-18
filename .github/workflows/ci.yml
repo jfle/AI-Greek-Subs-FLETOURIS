@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm run check
+      - run: npm test
+
+  installer:
+    name: Installer and Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint shell scripts
+        run: shellcheck -S warning install.sh build-installer.sh
+      - name: Build single-file installer
+        run: bash build-installer.sh
+      - name: Install with the built installer (HTTP mode) and check the service
+        run: |
+          sudo bash dist/ai-greek-subs-fletouris-installer.sh --https none
+          curl -fsS http://127.0.0.1:7000/health
+          curl -fsS http://127.0.0.1:7000/manifest.json
+          sudo bash dist/ai-greek-subs-fletouris-installer.sh --uninstall --purge
+      - name: Build Docker image
+        run: |
+          docker build -t ai-greek-subs-fletouris:ci .
+          docker run -d --name t -p 7001:7000 ai-greek-subs-fletouris:ci
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:7001/health && break; sleep 1; done
+          docker rm -f t

@@ -1,0 +1,359 @@
+'use strict';
+// AI-Greek-Subs-Fletouris — zero-dependency Node.js Stremio addon server.
+
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { PROVIDERS, LANGUAGES, listModels } = require('./src/providers');
+const { normalizeConfig, encodeConfig, decodeConfig, sign, b64url } = require('./src/config');
+const { getOrStartJob, renderJob, translateLines, status, openingReady, translationState, etaMs } = require('./src/translator');
+const auth = require('./src/auth');
+
+const PORT = parseInt(process.env.PORT || '7000', 10);
+const HOST = process.env.HOST || '0.0.0.0';
+const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
+const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || '';
+const SUBTITLE_WAIT_MS = Math.min(9000, parseInt(process.env.SUBTITLE_WAIT_MS || '8500', 10));
+const pkg = require('./package.json');
+const PAGE = fs.readFileSync(path.join(__dirname, 'public', 'configure.html'), 'utf8');
+const STATIC = {
+  '/logo.png': fs.readFileSync(path.join(__dirname, 'public', 'logo.png')),
+  '/background.png': fs.readFileSync(path.join(__dirname, 'public', 'background.png')),
+};
+
+function manifest(cfg, base) {
+  const lang = cfg ? LANGUAGES[cfg.targetLang] : 'Greek';
+  return {
+    id: 'community.ai-greek-subs-fletouris',
+    version: pkg.version,
+    name: 'AI-Greek-Subs-Fletouris',
+    logo: `${base}/logo.png`,
+    background: `${base}/background.png`,
+    description:
+      `Translates English subtitles to ${lang} with AI` +
+      (cfg ? ` (${PROVIDERS[cfg.provider].label} · ${cfg.model}).` : '. Configure your AI provider to start.'),
+    // The (always empty) stream resource only tells the addon which title was opened, so translation
+    // can start while the viewer is still picking a stream.
+    resources: cfg && cfg.autoTranslate && cfg.earlyStart
+      ? ['subtitles', { name: 'stream', types: ['movie', 'series'], idPrefixes: ['tt', 'kitsu'] }]
+      : ['subtitles'],
+    types: ['movie', 'series'],
+    idPrefixes: ['tt', 'kitsu'],
+    catalogs: [],
+    behaviorHints: { configurable: true, configurationRequired: !cfg },
+  };
+}
+
+function baseUrl(req) {
+  if (PUBLIC_URL) return PUBLIC_URL;
+  const proto = (req.headers['x-forwarded-proto'] || '').split(',')[0] || (req.socket.encrypted ? 'https' : 'http');
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  return `${proto}://${host}`;
+}
+
+function send(res, code, body, type = 'application/json; charset=utf-8', extra = {}) {
+  res.writeHead(code, {
+    'Content-Type': type,
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': '*',
+    ...extra,
+  });
+  res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (c) => {
+      data += c;
+      if (data.length > 100000) {
+        reject(new Error('Body too large'));
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      try {
+        resolve(data ? JSON.parse(data) : {});
+      } catch {
+        reject(new Error('Invalid JSON'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+function renderPage(cfg) {
+  const data = {
+    config: cfg,
+    providers: Object.fromEntries(
+      Object.entries(PROVIDERS).map(([k, p]) => [k, { label: p.label, baseUrl: p.baseUrl, defaultModel: p.defaultModel, models: p.models, keyUrl: p.keyUrl, auth: p.auth || null }]),
+    ),
+    credential: cfg && cfg.credId ? auth.credSummary(cfg.credId) : null,
+    chatgptRedirect: auth.CHATGPT_REDIRECT,
+    languages: LANGUAGES,
+    passwordRequired: !!CONFIG_PASSWORD,
+    version: pkg.version,
+  };
+  const json = JSON.stringify(data).replace(/</g, '\\u003c');
+  return PAGE.replace('/*__BOOT__*/', `window.__BOOT__ = ${json};`);
+}
+
+const isEnglish = (lang) => ['eng', 'en', 'english', 'en-us', 'en-gb'].includes(String(lang || '').toLowerCase());
+
+async function fetchSourceSubs(cfg, type, id, extra) {
+  const suffix = extra ? `/${extra}` : '';
+  const results = await Promise.all(
+    cfg.sources.map(async (base) => {
+      try {
+        const r = await fetch(`${base}/subtitles/${type}/${id}${suffix}.json`, { signal: AbortSignal.timeout(12000) });
+        if (!r.ok) return [];
+        const j = await r.json();
+        return Array.isArray(j.subtitles) ? j.subtitles : [];
+      } catch {
+        return [];
+      }
+    }),
+  );
+  const seen = new Set();
+  const out = [];
+  // Interleave sources so each configured addon contributes its best match first.
+  const maxLen = Math.max(0, ...results.map((r) => r.length));
+  for (let i = 0; i < maxLen; i++) {
+    for (const list of results) {
+      const s = list[i];
+      if (s && s.url && isEnglish(s.lang) && !seen.has(s.url)) {
+        seen.add(s.url);
+        out.push(s);
+      }
+    }
+  }
+  return out;
+}
+
+// Opening a title in Stremio (before a stream is picked): start translating its best English subtitle.
+const earlyStarted = new Map();
+async function handleStream(req, res, token, type, id) {
+  send(res, 200, { streams: [] }, undefined, { 'Cache-Control': 'no-store' });
+  const cfg = decodeConfig(token);
+  if (!cfg || !cfg.autoTranslate || !cfg.earlyStart) return;
+  id = decodeURIComponent(id);
+  if (type === 'series' && !/:\d+:\d+$/.test(id)) return;
+  const key = `${type}|${id}|${cfg.provider}|${cfg.model}|${cfg.targetLang}`;
+  if (earlyStarted.has(key) && Date.now() - earlyStarted.get(key) < 600e3) return;
+  earlyStarted.set(key, Date.now());
+  try {
+    const subs = await fetchSourceSubs(cfg, type, id, '');
+    if (!subs[0]) return;
+    const job = getOrStartJob(subs[0].url, cfg);
+    job.lastRequested = Math.max(job.lastRequested || 0, Date.now() - 1800e3);
+    console.log(`[early] ${type} ${id} -> ${job.key} (${job.status})`);
+  } catch (e) {
+    console.error(`[early] ${id}: ${e.message}`);
+  }
+}
+
+async function handleSubtitles(req, res, token, type, id, extra) {
+  const cfg = decodeConfig(token);
+  if (!cfg) return send(res, 200, { subtitles: [] });
+  let english = await fetchSourceSubs(cfg, type, id, extra);
+  // Prefer a near-top candidate that is already translated or in progress (e.g. a pre-translated next episode).
+  const ready = english.slice(0, 3).findIndex((s) => translationState(s.url, cfg) !== 'none');
+  if (ready > 0) english.unshift(english.splice(ready, 1)[0]);
+  english = english.slice(0, cfg.maxCandidates);
+  const base = baseUrl(req);
+  const subtitles = english.map((s, i) => {
+    const src = b64url(s.url);
+    return {
+      id: `ai-${cfg.targetLang}-${i + 1}-${sign(src).slice(0, 8)}`,
+      url: `${base}/${token}/t/${src}/${sign(src)}.srt`,
+      lang: cfg.targetLang,
+    };
+  });
+  // Pre-translate the best (hash-matched, when available) English subtitle as soon as playback starts.
+  let current = null;
+  if (cfg.autoTranslate && english[0]) {
+    const job = (current = getOrStartJob(english[0].url, cfg));
+    // Ranks above older, abandoned jobs but below any track the user actually selects.
+    job.lastRequested = Math.max(job.lastRequested || 0, Date.now() - 3600e3);
+  }
+  console.log(`[subs] ${type} ${decodeURIComponent(id)}: ${english.length} track(s)${ready > 0 ? ' (reused a pre-translated subtitle)' : ''}`);
+  send(res, 200, { subtitles, cacheMaxAge: 60 }, undefined, { 'Cache-Control': 'max-age=60' });
+  // Start the next episode only after this one is translated, so it never takes LM Studio slots from it.
+  if (cfg.prefetchNext && type === 'series') {
+    Promise.resolve(current && current.promise).then(() => prefetchNextEpisode(cfg, decodeURIComponent(id)));
+  }
+}
+
+// While an episode plays, translate the next one at the lowest priority so it starts fully in Greek.
+const prefetched = new Map();
+async function prefetchNextEpisode(cfg, id) {
+  const m = /^(.+):(\d+):(\d+)$/.exec(id);
+  if (!m) return;
+  const nextId = `${m[1]}:${m[2]}:${parseInt(m[3], 10) + 1}`;
+  const key = `${nextId}|${cfg.provider}|${cfg.model}|${cfg.targetLang}`;
+  if (prefetched.has(key) && Date.now() - prefetched.get(key) < 6 * 3600e3) return;
+  prefetched.set(key, Date.now());
+  try {
+    const subs = await fetchSourceSubs(cfg, 'series', nextId, '');
+    if (!subs[0]) return;
+    const job = getOrStartJob(subs[0].url, cfg);
+    job.lastRequested = Math.max(job.lastRequested || 0, 1); // lowest priority
+    console.log(`[prefetch] ${nextId} -> ${job.key} (${job.status})`);
+  } catch (e) {
+    console.error(`[prefetch] ${nextId}: ${e.message}`);
+  }
+}
+
+async function handleTranslation(req, res, token, src, sig) {
+  const cfg = decodeConfig(token);
+  if (!cfg || sign(src) !== sig) return send(res, 403, 'Forbidden', 'text/plain');
+  const srcUrl = Buffer.from(src, 'base64url').toString('utf8');
+  const job = getOrStartJob(srcUrl, cfg);
+  job.lastRequested = Date.now(); // the track being watched gets the provider's slots first
+  // Stremio's streaming server gives up after ~10 s, so answer well before that: return as soon as the
+  // job is finished, or after ~2.5 s once the English cues are known, and never later than SUBTITLE_WAIT_MS.
+  // Stremio loads a subtitle file only once per selection, so use the time it allows (~10 s):
+  // keep waiting while the whole file is about to finish; otherwise return once enough of the opening
+  // is translated (more on the first request, which starts playback, than on an OFF/ON reload).
+  const t0 = Date.now();
+  const firstServe = !job.served;
+  while (job.status !== 'done' && job.status !== 'error') {
+    const waited = Date.now() - t0;
+    if (waited >= SUBTITLE_WAIT_MS) break;
+    const finishesInTime = etaMs(job) < SUBTITLE_WAIT_MS - waited;
+    if (!finishesInTime && waited >= 1000 && openingReady(job, firstServe ? 150 : 15)) break;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  job.served = true;
+  console.log(`[serve] ${job.key} ${job.status} ${job.total ? Math.floor((job.done / job.total) * 100) : 0}% after ${Date.now() - t0}ms`);
+  send(res, 200, renderJob(job, cfg), 'application/x-subrip; charset=utf-8', {
+    'Cache-Control': job.status === 'done' ? 'public, max-age=86400' : 'no-store',
+  });
+}
+
+function checkPassword(body) {
+  if (CONFIG_PASSWORD && body.password !== CONFIG_PASSWORD) {
+    const e = new Error('Wrong configuration password');
+    e.code = 401;
+    throw e;
+  }
+}
+
+async function handleApi(req, res, action) {
+  try {
+    const body = await readBody(req);
+    checkPassword(body);
+    if (action === 'encode') {
+      const cfg = normalizeConfig(body.config || {});
+      const pa = PROVIDERS[cfg.provider].auth;
+      if (pa === 'chatgpt') {
+        if (!cfg.credId) throw new Error('Sign in with ChatGPT first');
+        if (!cfg.model) throw new Error('Choose a model (click "Load models")');
+      } else if (!cfg.apiKey && !cfg.credId && cfg.provider !== 'custom') {
+        throw new Error(pa ? 'Sign in or paste an API key first' : 'An API key is required for this provider');
+      }
+      const token = encodeConfig(cfg);
+      const manifestUrl = `${baseUrl(req)}/${token}/manifest.json`;
+      return send(res, 200, { token, manifestUrl, stremioUrl: manifestUrl.replace(/^https?:\/\//, 'stremio://') });
+    }
+    if (action === 'models') {
+      const cfg = normalizeConfig(body.config || {});
+      return send(res, 200, { models: await listModels(cfg) });
+    }
+    if (action === 'test') {
+      const cfg = normalizeConfig(body.config || {});
+      const started = Date.now();
+      const out = await translateLines(
+        { 1: "Where were you last night? I've been calling you for hours!", 2: '<i>Come on, we have to go.</i>' },
+        [],
+        cfg,
+      );
+      if (!out['1']) throw new Error('The model replied, but not in the expected format. Try another model.');
+      return send(res, 200, { ok: true, sample: out, ms: Date.now() - started });
+    }
+    if (action === 'oauth/openrouter/start') {
+      if (!PUBLIC_URL && !/^https:/.test(baseUrl(req))) throw new Error('OpenRouter sign-in needs the HTTPS address (set PUBLIC_URL).');
+      return send(res, 200, { url: auth.openrouterStart(PUBLIC_URL || baseUrl(req), { limit: body.limit }) });
+    }
+    if (action === 'oauth/chatgpt/start') {
+      return send(res, 200, { url: auth.chatgptStart({ credId: body.credId }), redirect: auth.CHATGPT_REDIRECT });
+    }
+    if (action === 'oauth/chatgpt/finish') {
+      return send(res, 200, await auth.chatgptFinish(body.url));
+    }
+    if (action === 'oauth/xai/start') {
+      return send(res, 200, await auth.xaiStart());
+    }
+    if (action === 'oauth/xai/poll') {
+      return send(res, 200, await auth.xaiPoll(body.pendingId));
+    }
+    if (action === 'credential') {
+      return send(res, 200, { credential: auth.credSummary(body.credId) });
+    }
+    send(res, 404, { error: 'Unknown action' });
+  } catch (e) {
+    send(res, e.code === 401 ? 401 : 400, { error: e.message });
+  }
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (req.method === 'OPTIONS') return send(res, 204, '');
+    const { pathname } = new URL(req.url, 'http://x');
+    let m;
+
+    if (req.method === 'POST' && (m = pathname.match(/^\/api\/(encode|models|test|credential|oauth\/openrouter\/start|oauth\/chatgpt\/start|oauth\/chatgpt\/finish|oauth\/xai\/start|oauth\/xai\/poll)$/))) {
+      return handleApi(req, res, m[1]);
+    }
+    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Method not allowed' });
+
+    if (pathname === '/') return send(res, 302, '', 'text/plain', { Location: '/configure' });
+    if (pathname === '/health') return send(res, 200, { ok: true, version: pkg.version });
+    if (pathname === '/status') return send(res, 200, { jobs: status() });
+    // Always configure on the public HTTPS address (needed for sign-in callbacks and Stremio installs).
+    if (PUBLIC_URL && /(^|\/)configure$/.test(pathname) && new URL(PUBLIC_URL).host !== req.headers.host) {
+      return send(res, 302, '', 'text/plain', { Location: `${PUBLIC_URL}${pathname}` });
+    }
+    if (pathname === '/oauth/openrouter/callback') {
+      const q = new URL(req.url, 'http://x').searchParams;
+      try {
+        if (q.get('error')) throw new Error(q.get('error_description') || q.get('error'));
+        const credId = await auth.openrouterFinish(q.get('code'), q.get('state'));
+        return send(res, 302, '', 'text/plain', { Location: `/configure#cred=${credId}` });
+      } catch (e) {
+        return send(res, 302, '', 'text/plain', { Location: `/configure#autherror=${encodeURIComponent(e.message)}` });
+      }
+    }
+    if (pathname === '/configure') return send(res, 200, renderPage(null), 'text/html; charset=utf-8');
+    if (pathname === '/manifest.json') return send(res, 200, manifest(null, baseUrl(req)));
+    if (pathname === '/logo.png' || pathname === '/background.png') {
+      return send(res, 200, STATIC[pathname], 'image/png', { 'Cache-Control': 'public, max-age=604800' });
+    }
+
+    if ((m = pathname.match(/^\/([\w-]{20,})\/configure$/))) {
+      return send(res, 200, renderPage(decodeConfig(m[1])), 'text/html; charset=utf-8');
+    }
+    if ((m = pathname.match(/^\/([\w-]{20,})\/manifest\.json$/))) {
+      const cfg = decodeConfig(m[1]);
+      return send(res, 200, manifest(cfg, baseUrl(req)));
+    }
+    if ((m = pathname.match(/^\/([\w-]{20,})\/subtitles\/([^/]+)\/([^/]+?)(?:\/([^/]+))?\.json$/))) {
+      return await handleSubtitles(req, res, m[1], m[2], m[3], m[4]);
+    }
+    if ((m = pathname.match(/^\/([\w-]{20,})\/stream\/([^/]+)\/([^/]+?)\.json$/))) {
+      return await handleStream(req, res, m[1], m[2], m[3]);
+    }
+    if ((m = pathname.match(/^\/([\w-]{20,})\/t\/([\w-]+)\/([\w-]+)\.srt$/))) {
+      return await handleTranslation(req, res, m[1], m[2], m[3]);
+    }
+    send(res, 404, { error: 'Not found' });
+  } catch (e) {
+    console.error(e);
+    if (!res.headersSent) send(res, 500, { error: 'Internal error' });
+  }
+});
+
+server.listen(PORT, HOST, () => {
+  console.log(`AI-Greek-Subs-Fletouris v${pkg.version} listening on http://${HOST}:${PORT}`);
+  console.log(`Open http://<this-machine>:${PORT}/configure to set it up.`);
+});

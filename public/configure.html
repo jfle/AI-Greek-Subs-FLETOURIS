@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-Greek-Subs-Fletouris — Configure</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<style>
+  /* Greek flag theme: Greek blue #0D5EAF and white, nine stripes and the cross */
+  :root {
+    --blue: #0D5EAF; --blue-d: #0a4a8a; --blue-l: #e8f0fa;
+    --bg: #f4f7fc; --panel: #ffffff; --panel2: #f7f9fd; --line: #d3dff0;
+    --text: #0b1f3a; --muted: #5b6b84; --accent: var(--blue); --accent2: var(--blue);
+    --ok: #17803d; --err: #c62828; --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .flagbar { height: 18px; background: repeating-linear-gradient(180deg, var(--blue) 0 2px, #fff 2px 4px); }
+  .hero { position: relative; color: #fff; overflow: hidden;
+    background: repeating-linear-gradient(180deg, var(--blue) 0 calc(100%/9), #fff calc(100%/9) calc(200%/9)); }
+  .hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,74,138,.92) 0 46%, rgba(10,74,138,.55) 100%); }
+  .hero-in { position: relative; max-width: 760px; margin: 0 auto; padding: 28px 20px 26px; display: flex; gap: 18px; align-items: center; }
+  .hero img { width: 76px; height: 76px; border-radius: 18px; box-shadow: 0 6px 18px rgba(0,0,0,.25); background: #fff; }
+  .hero h1 { font-size: 26px; margin: 0; letter-spacing: .3px; }
+  .hero p { margin: 4px 0 0; opacity: .95; }
+  .cross { position: absolute; right: -30px; top: -30px; width: 190px; height: 190px; opacity: .18;
+    background: linear-gradient(#fff,#fff) center/38px 100% no-repeat, linear-gradient(#fff,#fff) center/100% 38px no-repeat; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 64px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--blue); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(13,94,175,.06); }
+  section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--blue); margin: 0 0 14px; }
+  label { display: block; font-weight: 600; margin: 14px 0 6px; font-size: 14px; }
+  label:first-of-type { margin-top: 0; }
+  .hint { color: var(--muted); font-size: 13px; font-weight: 400; margin-top: 4px; }
+  .hint a { color: var(--blue); }
+  code { background: var(--blue-l); color: var(--blue-d); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  input[type=text], input[type=password], input[type=number], select, textarea {
+    width: 100%; background: #fff; color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; font: inherit; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(13,94,175,.15); }
+  textarea { resize: vertical; min-height: 70px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .row { display: flex; gap: 10px; align-items: stretch; }
+  .row > * { flex: 1; }
+  .row > .btn { flex: 0 0 auto; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .grid3 label { margin-top: 0; }
+  .check { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-weight: 400; }
+  .check input { margin-top: 4px; accent-color: var(--blue); }
+  .btn { background: #fff; color: var(--blue); border: 1.5px solid var(--blue); border-radius: 8px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block; }
+  .btn:hover { background: var(--blue-l); }
+  .btn.primary { background: var(--blue); color: #fff; }
+  .btn.primary:hover { background: var(--blue-d); }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .msg { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; display: none; white-space: pre-wrap; word-break: break-word; }
+  .msg.ok { display: block; background: #eaf6ee; border: 1px solid #b5dfc3; color: var(--ok); }
+  .msg.err { display: block; background: #fdecec; border: 1px solid #f3bcbc; color: var(--err); }
+  .install { display: none; }
+  .install.show { display: block; }
+  .url { font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--blue-l); border: 1px solid var(--line); border-radius: 8px; padding: 10px; word-break: break-all; margin: 8px 0 12px; }
+  details summary { cursor: pointer; color: var(--blue); font-weight: 600; }
+  .authbox { margin-top: 14px; padding: 14px; border: 1px dashed #9dbbe0; border-radius: 8px; background: var(--blue-l); }
+  .authstatus { margin-top: 10px; font-size: 14px; }
+  .authstatus.ok { color: var(--ok); }
+  .authstatus.warn { color: var(--err); }
+  .steps { margin: 12px 0 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
+  .steps li { margin-bottom: 4px; }
+  .devcode { display: inline-block; margin: 10px 0 6px; padding: 8px 14px; font: 700 26px/1.1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 3px; background: #fff; border: 2px solid var(--blue); border-radius: 8px; color: var(--blue); }
+  .linkbtn { background: none; border: 0; color: var(--blue); cursor: pointer; font: inherit; padding: 0; text-decoration: underline; }
+  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 24px; }
+  footer .mini { display: inline-block; width: 18px; height: 12px; vertical-align: -1px; margin-right: 6px; border: 1px solid var(--line);
+    background: linear-gradient(var(--blue),var(--blue)) 0 0/40% 55.6% no-repeat, repeating-linear-gradient(180deg, var(--blue) 0 11.11%, #fff 11.11% 22.22%); }
+  @media (max-width: 600px) { .grid3 { grid-template-columns: 1fr; } .row { flex-direction: column; } .hero h1 { font-size: 21px; } }
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="cross"></div>
+  <div class="hero-in">
+    <img src="/logo.png" alt="">
+    <div>
+      <h1>AI-Greek-Subs-Fletouris</h1>
+      <p>Ελληνικοί υπότιτλοι με AI για το Stremio · AI Greek subtitles for Stremio</p>
+    </div>
+  </div>
+</div>
+<div class="flagbar"></div>
+<div class="wrap">
+  <p class="sub">Finds English subtitles for whatever you play in Stremio, translates them to Greek with the AI model you choose, and adds them as a subtitle track.</p>
+
+  <form id="form" autocomplete="off">
+    <section>
+      <h2>AI provider</h2>
+      <label for="provider">Provider</label>
+      <select id="provider"></select>
+
+      <div class="authbox" id="authBox" style="display:none">
+        <div id="orAuth" style="display:none">
+          <div class="row">
+            <button type="button" class="btn primary" id="orSignIn">Sign in with OpenRouter</button>
+            <input type="number" id="orLimit" min="0" step="1" placeholder="Optional spending limit (USD)">
+          </div>
+          <div class="hint">Log in on OpenRouter and approve — no key to copy. One OpenRouter account gives you OpenAI, Claude, Gemini, Mistral and more.</div>
+        </div>
+        <div id="gptAuth" style="display:none">
+          <button type="button" class="btn primary" id="gptSignIn">Sign in with ChatGPT</button>
+          <div class="hint">Uses your ChatGPT Plus or Pro plan instead of a paid API key (counts toward your plan's usage).</div>
+          <div id="gptSteps" style="display:none">
+            <ol class="steps">
+              <li>Approve access in the OpenAI tab that just opened.</li>
+              <li>Your browser then shows a page that <b>can't load</b> (address starting with <code id="gptRedirect"></code>). That's expected.</li>
+              <li>Copy the <b>whole address</b> from that tab's address bar and paste it here:</li>
+            </ol>
+            <div class="row">
+              <input type="text" id="gptPaste" placeholder="http://127.0.0.1:1455/auth/callback?code=…">
+              <button type="button" class="btn primary" id="gptFinish">Finish sign-in</button>
+            </div>
+          </div>
+        </div>
+        <div id="xaiAuth" style="display:none">
+          <button type="button" class="btn primary" id="xaiSignIn">Sign in with Grok</button>
+          <div class="hint">Uses your <b>SuperGrok</b> or <b>X Premium</b> plan instead of a paid API key. xAI's consent screen may say "Grok Build" — that is xAI's shared sign-in for apps.</div>
+          <div id="xaiSteps" style="display:none">
+            <ol class="steps">
+              <li><a id="xaiLink" href="#" target="_blank" rel="noopener"><b>Open x.ai</b></a> (any device) and sign in with your Grok / X account.</li>
+              <li>If asked, enter this code and approve:<br><span class="devcode" id="xaiCode"></span></li>
+              <li id="xaiWait">Waiting for approval… this page continues by itself.</li>
+            </ol>
+          </div>
+        </div>
+        <div id="viaOr" style="display:none">
+          <div class="hint" id="viaOrText"></div>
+          <button type="button" class="btn" id="viaOrBtn" style="margin-top:8px"></button>
+        </div>
+        <div class="authstatus" id="authStatus"></div>
+      </div>
+
+      <div id="keyWrap">
+        <label for="apiKey" id="apiKeyLabel">API key</label>
+        <input type="password" id="apiKey" placeholder="Paste your API key">
+        <div class="hint" id="keyHint"></div>
+      </div>
+
+      <label for="model">Model</label>
+      <div class="row">
+        <select id="modelSelect" style="display:none"></select>
+        <input type="text" id="model" placeholder="model id">
+        <button type="button" class="btn" id="loadModels">Load models</button>
+      </div>
+      <div class="hint">Pick a model from the list, or click <b>Load models</b> to fetch every model your account can use. Small, fast models (luna / Flash / mini / Haiku class) work well, translate 2× faster and cost little.</div>
+
+      <div id="baseUrlWrap">
+        <label for="baseUrl">API base URL</label>
+        <input type="text" id="baseUrl">
+        <div class="hint">Only change this for a proxy or self-hosted endpoint (LM Studio: <code>http://&lt;PC-IP&gt;:1234/v1</code>, Ollama: <code>http://&lt;PC-IP&gt;:11434/v1</code>). Use the PC's network address, not <code>localhost</code>.</div>
+      </div>
+      <label class="check" id="thinkWrap"><input type="checkbox" id="disableThinking"> <span>Turn off model "thinking" (reasoning)<div class="hint">Asks LM Studio / local servers to skip the reasoning phase of thinking models (Qwen 3.x, gpt-oss…). Much faster, same translation quality. The model loads automatically on the first request — the first test can take a minute.</div></span></label>
+    </section>
+
+    <section>
+      <h2>Translation</h2>
+      <label for="targetLang">Translate English to</label>
+      <select id="targetLang"></select>
+
+      <label for="instructions">Extra instructions for the model <span class="hint">(optional)</span></label>
+      <textarea id="instructions" placeholder="e.g. Use informal, everyday Greek. Keep swear words."></textarea>
+
+      <label class="check"><input type="checkbox" id="autoTranslate"> <span>Start translating the best-matching English subtitle as soon as a video starts<div class="hint">Recommended — the Greek track is usually ready by the time you choose it.</div></span></label>
+      <label class="check"><input type="checkbox" id="earlyStart"> <span>Start translating as soon as you open a movie or episode, before you pick a stream<div class="hint">Gives the translation a head start, so playback usually begins fully in Greek.</div></span></label>
+      <label class="check"><input type="checkbox" id="prefetchNext"> <span>While you watch a series, translate the next episode in the background<div class="hint">The next episode then starts fully in Greek.</div></span></label>
+      <label class="check"><input type="checkbox" id="showOriginalWhilePending"> <span>While a translation is still running, show the remaining lines in English (italics)</span></label>
+    </section>
+
+    <section>
+      <details>
+        <summary>Advanced</summary>
+        <label for="sources" style="margin-top:14px">English subtitle sources (Stremio subtitle addon URLs, one per line)</label>
+        <textarea id="sources"></textarea>
+        <div class="hint">Defaults to OpenSubtitles v3. You can add any Stremio subtitle addon's manifest URL.</div>
+
+        <div class="grid3" style="margin-top:14px">
+          <div><label for="maxCandidates">Greek AI tracks (1 recommended)</label><input type="number" id="maxCandidates" min="1" max="10"></div>
+          <div><label for="batchSize">Lines per request</label><input type="number" id="batchSize" min="0" max="150" placeholder="auto"></div>
+          <div><label for="concurrency">Parallel requests</label><input type="number" id="concurrency" min="0" max="32" placeholder="auto"></div>
+        </div>
+        <label for="temperature">Temperature</label>
+        <input type="number" id="temperature" min="0" max="1.5" step="0.1">
+        <div class="hint">Extra tracks translate other English subtitle files (best sync match first); 1 lets the background translation always match what Stremio plays. Leave lines/parallel empty for automatic (ChatGPT sign-in: 24 parallel, other cloud providers: 8, local server: 3). Lower parallel requests if you hit rate limits.</div>
+      </details>
+    </section>
+
+    <section id="pwSection" style="display:none">
+      <h2>Server password</h2>
+      <input type="password" id="password" placeholder="Configuration password set on the server">
+    </section>
+
+    <div class="actions">
+      <button type="button" class="btn" id="test">Test translation</button>
+      <button type="submit" class="btn primary" id="save">Generate install link</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  </form>
+
+  <section class="install" id="install" style="margin-top:16px">
+    <h2>Install</h2>
+    <div class="actions">
+      <a class="btn primary" id="installBtn" href="#">Install in Stremio</a>
+      <button type="button" class="btn" id="copyBtn">Copy manifest URL</button>
+    </div>
+    <div class="url" id="manifestUrl"></div>
+    <div class="hint">If the Install button doesn't open Stremio (e.g. this server isn't on HTTPS), copy the URL and paste it into Stremio → Addons → search box. Keep this URL private: it carries your encrypted settings, and anyone who has it can use your API key through this server.</div>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+/*__BOOT__*/
+(function () {
+  const B = window.__BOOT__;
+  const $ = (id) => document.getElementById(id);
+  const cfg = B.config || {};
+  const defaults = {
+    provider: 'openai', targetLang: 'ell', sources: ['https://opensubtitles-v3.strem.io'], maxCandidates: 1,
+    autoTranslate: true, batchSize: 0, concurrency: 0, earlyStart: true, temperature: 0.3, showOriginalWhilePending: true, disableThinking: true,
+    prefetchNext: true, instructions: '', credId: ''
+  };
+  let c = Object.assign({}, defaults, cfg);
+  let credId = c.credId || '';
+  let credential = B.credential || null;
+
+  // Coming back from OpenRouter sign-in: restore the form saved before leaving.
+  const hash = new URLSearchParams(location.hash.slice(1));
+  let returnMsg = null;
+  if (hash.has('cred') || hash.has('autherror')) {
+    try { const saved = JSON.parse(sessionStorage.getItem('aisubs-form') || 'null'); if (saved) c = Object.assign({}, defaults, saved); } catch {}
+    if (hash.has('cred')) { credId = hash.get('cred'); c.provider = 'openrouter'; credential = { type: 'openrouter' }; returnMsg = ['✓ Signed in with OpenRouter.', true]; }
+    else returnMsg = ['Sign-in failed: ' + hash.get('autherror'), false];
+    history.replaceState(null, '', location.pathname);
+  }
+
+  for (const [k, p] of Object.entries(B.providers)) $('provider').add(new Option(p.label, k));
+  for (const [k, name] of Object.entries(B.languages)) $('targetLang').add(new Option(name, k));
+
+  // Model picker: a dropdown of known/loaded models plus "Other…" for typing any model ID.
+  function fillModels(list) {
+    const sel = $('modelSelect');
+    const cur = $('model').value.trim();
+    sel.innerHTML = '';
+    if (!list.length) { sel.style.display = 'none'; $('model').style.display = ''; return; }
+    for (const m of list) sel.add(new Option(m, m));
+    sel.add(new Option('Other… (type a model ID)', '__other'));
+    sel.value = list.includes(cur) ? cur : (cur ? '__other' : list[0]);
+    if (sel.value !== '__other') $('model').value = sel.value;
+    sel.style.display = '';
+    $('model').style.display = sel.value === '__other' ? '' : 'none';
+  }
+  $('modelSelect').addEventListener('change', () => {
+    const v = $('modelSelect').value;
+    if (v === '__other') { $('model').style.display = ''; $('model').value = ''; $('model').focus(); }
+    else { $('model').value = v; $('model').style.display = 'none'; }
+  });
+
+  let xaiTimer = null;
+  function stopXaiPoll() { if (xaiTimer) { clearTimeout(xaiTimer); xaiTimer = null; } }
+  // Providers that offer no sign-in for apps: one click to reach the same models through OpenRouter's sign-in.
+  const viaOr = (vendor, prefix, why) => ({
+    prefix,
+    text: `${why} Sign in with <b>OpenRouter</b> instead to use ${vendor} models with no key to copy (pay-as-you-go on your OpenRouter account).`,
+    button: `Use ${vendor} through OpenRouter sign-in`,
+  });
+  const ALT_SIGNIN = {
+    anthropic: viaOr('Claude', 'anthropic/', 'Anthropic does not allow Claude subscriptions in other apps, so there is no Claude sign-in here.'),
+    gemini: viaOr('Gemini', 'google/', 'Google offers no sign-in that lets other apps use Gemini.'),
+    mistral: viaOr('Mistral', 'mistralai/', 'Mistral offers no sign-in for other apps.'),
+    deepseek: viaOr('DeepSeek', 'deepseek/', 'DeepSeek offers no sign-in for other apps.'),
+    groq: viaOr('the same open models (Llama, Qwen…)', 'meta-llama/', 'Groq offers no sign-in for other apps.'),
+    together: viaOr('the same open models (Llama, Qwen…)', 'meta-llama/', 'Together AI offers no sign-in for other apps.'),
+    openai: { switchTo: 'chatgpt', text: 'Have ChatGPT Plus or Pro? Sign in with ChatGPT instead of paying for an API key.', button: 'Switch to "Sign in with ChatGPT"' },
+  };
+
+  function onProvider(initial) {
+    const p = B.providers[$('provider').value];
+    if (!initial || !$('model').value) $('model').value = p.defaultModel;
+    fillModels(p.models);
+    if (!initial || !$('baseUrl').value) $('baseUrl').value = p.baseUrl;
+    $('model').placeholder = p.defaultModel;
+    $('keyHint').innerHTML = p.keyUrl ? `Get a key at <a href="${p.keyUrl}" target="_blank" rel="noopener">${new URL(p.keyUrl).host}</a>. It is stored encrypted inside your addon URL — not on this page.` : 'Leave empty if your endpoint needs no key.';
+    $('baseUrlWrap').style.display = p.auth === 'chatgpt' ? 'none' : '';
+    $('thinkWrap').style.display = $('provider').value === 'custom' ? '' : 'none';
+    const alt = ALT_SIGNIN[$('provider').value];
+    $('authBox').style.display = p.auth || alt ? '' : 'none';
+    $('orAuth').style.display = p.auth === 'openrouter' ? '' : 'none';
+    $('gptAuth').style.display = p.auth === 'chatgpt' ? '' : 'none';
+    $('xaiAuth').style.display = p.auth === 'xai' ? '' : 'none';
+    $('xaiSteps').style.display = 'none';
+    stopXaiPoll();
+    $('viaOr').style.display = alt ? '' : 'none';
+    if (alt) { $('viaOrText').innerHTML = alt.text; $('viaOrBtn').textContent = alt.button; }
+    $('keyWrap').style.display = p.auth === 'chatgpt' ? 'none' : '';
+    $('apiKeyLabel').textContent = p.auth === 'openrouter' ? '…or paste an API key' : p.auth === 'xai' ? '…or paste an xAI API key' : 'API key';
+    if (!initial && credential && credential.type !== p.auth) { credId = ''; credential = null; }
+    renderAuth();
+  }
+
+  function renderAuth() {
+    const el = $('authStatus');
+    if (!credId) { el.innerHTML = ''; el.className = 'authstatus'; return; }
+    const who = credential && credential.email ? ` as <b>${credential.email.replace(/</g, '&lt;')}</b>` : '';
+    const name = { chatgpt: 'ChatGPT', xai: 'Grok', openrouter: 'OpenRouter' }[credential && credential.type] || 'OpenRouter';
+    if (credential && (credential.needsReauth || credential.missing)) {
+      el.innerHTML = `⚠ ${name} sign-in has expired — sign in again.`;
+      el.className = 'authstatus warn';
+    } else {
+      el.innerHTML = `✓ Signed in with ${name}${who}. <button type="button" class="linkbtn" id="signOut">Sign out</button>`;
+      el.className = 'authstatus ok';
+      $('signOut').onclick = () => { credId = ''; credential = null; renderAuth(); };
+    }
+  }
+
+  $('provider').value = c.provider;
+  $('apiKey').value = c.apiKey || '';
+  $('model').value = c.model || '';
+  $('baseUrl').value = c.baseUrl || '';
+  $('targetLang').value = c.targetLang;
+  $('instructions').value = c.instructions || '';
+  $('autoTranslate').checked = !!c.autoTranslate;
+  $('showOriginalWhilePending').checked = !!c.showOriginalWhilePending;
+  $('prefetchNext').checked = c.prefetchNext !== false;
+  $('earlyStart').checked = c.earlyStart !== false;
+  $('gptRedirect').textContent = B.chatgptRedirect;
+  $('disableThinking').checked = c.disableThinking !== false;
+  $('sources').value = (c.sources || []).join('\n');
+  $('maxCandidates').value = c.maxCandidates;
+  $('batchSize').value = c.batchSize || '';
+  $('concurrency').value = c.concurrency || '';
+  $('temperature').value = c.temperature;
+  onProvider(true);
+  $('provider').addEventListener('change', () => onProvider(false));
+  if (B.passwordRequired) $('pwSection').style.display = '';
+  $('footer').innerHTML = `<span class="mini"></span>AI-Greek-Subs-Fletouris v${B.version}`;
+
+  function collect() {
+    return {
+      provider: $('provider').value,
+      apiKey: $('apiKey').value.trim(),
+      model: $('model').value.trim(),
+      baseUrl: $('baseUrl').value.trim(),
+      targetLang: $('targetLang').value,
+      instructions: $('instructions').value.trim(),
+      autoTranslate: $('autoTranslate').checked,
+      showOriginalWhilePending: $('showOriginalWhilePending').checked,
+      prefetchNext: $('prefetchNext').checked,
+      earlyStart: $('earlyStart').checked,
+      credId,
+      disableThinking: $('disableThinking').checked,
+      sources: $('sources').value.split(/\n+/).map((s) => s.trim()).filter(Boolean),
+      maxCandidates: +$('maxCandidates').value,
+      batchSize: +$('batchSize').value || 0,
+      concurrency: +$('concurrency').value || 0,
+      temperature: +$('temperature').value,
+    };
+  }
+
+  function msg(text, ok) {
+    const el = $('msg');
+    el.textContent = text;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+  }
+
+  async function api(action, btn, extra = {}) {
+    btn.disabled = true;
+    try {
+      const r = await fetch(`/api/${action}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({ config: collect(), password: $('password').value }, extra))
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      return j;
+    } finally { btn.disabled = false; }
+  }
+
+  async function loadModels(autoPick) {
+    const j = await api('models', $('loadModels'));
+    if (autoPick && !$('model').value && j.models.length) {
+      $('model').value = j.models.find((m) => /luna|mini|flash|haiku/i.test(m)) || j.models[0];
+    }
+    fillModels(j.models);
+    return j.models;
+  }
+  $('loadModels').addEventListener('click', async () => {
+    try {
+      const models = await loadModels(false);
+      msg(models.length ? `Loaded ${models.length} models — choose one from the Model list.` : 'No models were returned for this account.', models.length > 0);
+    } catch (e) { msg('Could not load models: ' + e.message, false); }
+  });
+
+  // ---- Sign in with OpenRouter (redirects away and back) ----
+  $('orSignIn').addEventListener('click', async () => {
+    try {
+      const form = collect();
+      const j = await api('oauth/openrouter/start', $('orSignIn'), { limit: $('orLimit').value });
+      sessionStorage.setItem('aisubs-form', JSON.stringify(form));
+      location.href = j.url;
+    } catch (e) { msg('Could not start OpenRouter sign-in: ' + e.message, false); }
+  });
+
+  // ---- Sign in with ChatGPT (approve in a new tab, paste the address back) ----
+  $('gptSignIn').addEventListener('click', async () => {
+    const tab = window.open('about:blank', '_blank');
+    try {
+      const j = await api('oauth/chatgpt/start', $('gptSignIn'), { credId });
+      if (tab) tab.location.href = j.url; else window.open(j.url, '_blank');
+      $('gptSteps').style.display = '';
+      $('gptPaste').value = '';
+      $('gptPaste').focus();
+    } catch (e) { if (tab) tab.close(); msg('Could not start ChatGPT sign-in: ' + e.message, false); }
+  });
+  $('gptFinish').addEventListener('click', async () => {
+    try {
+      const j = await api('oauth/chatgpt/finish', $('gptFinish'), { url: $('gptPaste').value });
+      credId = j.credId;
+      credential = { type: 'chatgpt', email: j.email };
+      $('gptSteps').style.display = 'none';
+      renderAuth();
+      try { await loadModels(true); msg('✓ Signed in. Pick a model ("luna" models are the fastest on your plan), then Test translation.', true); }
+      catch (e) { msg('Signed in, but loading models failed: ' + e.message, false); }
+    } catch (e) { msg(e.message, false); }
+  });
+
+  // ---- Sign in with Grok (device code: approve on x.ai, this page polls) ----
+  $('xaiSignIn').addEventListener('click', async () => {
+    stopXaiPoll();
+    try {
+      const j = await api('oauth/xai/start', $('xaiSignIn'));
+      $('xaiCode').textContent = j.userCode;
+      $('xaiLink').href = j.verificationUriComplete;
+      $('xaiWait').textContent = 'Waiting for approval… this page continues by itself.';
+      $('xaiSteps').style.display = '';
+      window.open(j.verificationUriComplete, '_blank', 'noopener');
+      const poll = async () => {
+        try {
+          const r = await fetch('/api/oauth/xai/poll', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pendingId: j.pendingId, password: $('password').value }) });
+          const k = await r.json();
+          if (!r.ok) throw new Error(k.error || `HTTP ${r.status}`);
+          if (k.status !== 'done') { xaiTimer = setTimeout(poll, 2000); return; }
+          xaiTimer = null;
+          credId = k.credId;
+          credential = { type: 'xai', email: k.email };
+          $('xaiSteps').style.display = 'none';
+          renderAuth();
+          try {
+            const models = await loadModels(false);
+            const fast = models.find((m) => /non-reasoning/i.test(m));
+            if (fast) { $('model').value = fast; fillModels(models); }
+            msg('✓ Signed in with Grok. Pick a model ("non-reasoning" models are the fastest), then Test translation.', true);
+          } catch (e) { msg('Signed in, but loading models failed: ' + e.message, false); }
+        } catch (e) { xaiTimer = null; $('xaiWait').textContent = '⚠ ' + e.message; msg(e.message, false); }
+      };
+      xaiTimer = setTimeout(poll, j.interval * 1000);
+    } catch (e) { msg('Could not start Grok sign-in: ' + e.message, false); }
+  });
+
+  // ---- Providers without sign-in: switch to ChatGPT sign-in, or OpenRouter sign-in with that vendor's models ----
+  $('viaOrBtn').addEventListener('click', async () => {
+    const alt = ALT_SIGNIN[$('provider').value];
+    if (!alt) return;
+    if (alt.switchTo) {
+      $('provider').value = alt.switchTo;
+      onProvider(false);
+      $('gptSignIn').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    $('provider').value = 'openrouter';
+    onProvider(false);
+    $('model').value = '';
+    try {
+      const form = collect();
+      const j = await api('oauth/openrouter/start', $('viaOrBtn'), {});
+      sessionStorage.setItem('aisubs-form', JSON.stringify(form));
+      sessionStorage.setItem('aisubs-orvendor', alt.prefix);
+      location.href = j.url;
+    } catch (e) { msg('Could not start OpenRouter sign-in: ' + e.message, false); }
+  });
+
+  // Back from OpenRouter after choosing a vendor: pick a fast model from that vendor.
+  const orVendor = sessionStorage.getItem('aisubs-orvendor');
+  if (orVendor && credId && hash.has('cred')) {
+    sessionStorage.removeItem('aisubs-orvendor');
+    loadModels(false).then((models) => {
+      const mine = models.filter((m) => m.startsWith(orVendor));
+      const pick = mine.find((m) => /flash|haiku|mini|small|chat|instruct/i.test(m) && !/:free|vision|image/i.test(m)) || mine[0];
+      if (pick) { $('model').value = pick; fillModels(models); }
+      msg(`✓ Signed in with OpenRouter. ${pick ? `Model set to ${pick} — ` : ''}pick another from the list if you like, then Test translation.`, true);
+    }).catch((e) => msg('Signed in, but loading models failed: ' + e.message, false));
+  }
+
+  if (returnMsg) msg(returnMsg[0], returnMsg[1]);
+  if (credId && hash.has('cred')) {
+    api('credential', $('loadModels'), { credId }).then((j) => { credential = j.credential; renderAuth(); }).catch(() => {});
+  }
+
+  $('test').addEventListener('click', async () => {
+    msg('Testing…', true);
+    try {
+      const j = await api('test', $('test'));
+      msg(`✓ Works (${(j.ms / 1000).toFixed(1)} s)\n\n${j.sample['1']}\n${j.sample['2'] || ''}`, true);
+    } catch (e) { msg('Test failed: ' + e.message, false); }
+  });
+
+  $('form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    try {
+      const j = await api('encode', $('save'));
+      $('manifestUrl').textContent = j.manifestUrl;
+      $('installBtn').href = j.stremioUrl;
+      $('install').classList.add('show');
+      $('msg').className = 'msg';
+      $('install').scrollIntoView({ behavior: 'smooth' });
+    } catch (e) { msg(e.message, false); }
+  });
+
+  $('copyBtn').addEventListener('click', async () => {
+    const t = $('manifestUrl').textContent;
+    try { await navigator.clipboard.writeText(t); $('copyBtn').textContent = 'Copied ✓'; }
+    catch { const r = document.createRange(); r.selectNode($('manifestUrl')); getSelection().removeAllRanges(); getSelection().addRange(r); }
+    setTimeout(() => ($('copyBtn').textContent = 'Copy manifest URL'), 1500);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Installation help
+    url: https://github.com/jfle/ai-greek-subs-fletouris/blob/main/INSTALL.md#troubleshooting
+    about: Most problems (manifest error, English subtitles, HTTPS) are covered in the troubleshooting guide.
+  - name: Security vulnerability
+    url: https://github.com/jfle/ai-greek-subs-fletouris/security/advisories/new
+    about: Please report security issues privately.

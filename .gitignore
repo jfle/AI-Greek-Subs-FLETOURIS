@@ -1,0 +1,9 @@
+# runtime data: encryption key, sign-ins, cache — never commit
+data/
+# build output (attached to GitHub releases instead)
+dist/
+node_modules/
+.env
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,42 @@
+{
+  "name": "ai-greek-subs-fletouris",
+  "version": "1.7.0",
+  "description": "Stremio addon that translates English subtitles to Greek (or 17 other languages) with the AI you choose: Sign in with ChatGPT or Grok, OpenRouter, API keys, or local LM Studio / Ollama.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "check": "node scripts/check.js",
+    "build": "bash build-installer.sh"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "keywords": [
+    "stremio",
+    "stremio-addon",
+    "subtitles",
+    "greek",
+    "translation",
+    "ai",
+    "llm",
+    "openai",
+    "chatgpt",
+    "grok",
+    "openrouter",
+    "lm-studio",
+    "ollama",
+    "raspberry-pi"
+  ],
+  "author": "Ioannis Fletouris",
+  "license": "MIT",
+  "homepage": "https://github.com/jfle/ai-greek-subs-fletouris#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jfle/ai-greek-subs-fletouris.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jfle/ai-greek-subs-fletouris/issues"
+  },
+  "private": true
+}
