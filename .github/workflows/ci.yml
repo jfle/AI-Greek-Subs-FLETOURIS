@@ -17,8 +17,8 @@ jobs:
       matrix:
         node: [18, 20, 22]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
       - run: npm run check
@@ -28,7 +28,7 @@ jobs:
     name: Installer and Docker build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Lint shell scripts
         run: shellcheck -S warning install.sh build-installer.sh
       - name: Build single-file installer
@@ -42,6 +42,6 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t ai-greek-subs-fletouris:ci .
-          docker run -d --name t -p 7001:7000 ai-greek-subs-fletouris:ci
+          docker run -d --name aigs-ci -p 7001:7000 ai-greek-subs-fletouris:ci
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:7001/health && break; sleep 1; done
-          docker rm -f t
+          docker rm -f aigs-ci

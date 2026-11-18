@@ -2,6 +2,13 @@
 
 All notable changes to this project. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org).
 
+## [1.7.1] — 2026-11-18
+
+### Fixed
+- CI: Docker smoke test used a container name that current Docker rejects.
+- GitHub Actions updated to the Node 24 versions (checkout v5, setup-node v5).
+- First release with the downloadable single-file installer and Docker image.
+
 ## [1.7.0] — 2026-11-18
 
 First public release on GitHub.
@@ -50,6 +57,7 @@ Early development.
 - Works within Stremio's ~10 s subtitle timeout: partial results, priority scheduling of the track being watched, opening lines first.
 - One Greek track per title, next-episode prefetch, reuse of already translated subtitles, 30-day cache.
 
+[1.7.1]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.7.1
 [1.7.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.7.0
 [1.6.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.6.0
 [1.5.2]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.5.2
