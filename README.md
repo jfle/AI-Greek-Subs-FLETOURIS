@@ -16,7 +16,17 @@ The installer uses `/opt/aiostreams`. If you already installed AIOStreams throug
 
 For a fresh install, the app listens on `127.0.0.1:3000` with a generated admin password. Retrieve the login on the host with `sudo grep '^AIOSTREAMS_AUTH=' /opt/aiostreams/.env`. From another machine, use an SSH tunnel such as `ssh -L 3000:localhost:3000 user@host`, then open `http://localhost:3000`.
 
-For routine remote access, configure an HTTPS reverse proxy and set `BASE_URL` in `/opt/aiostreams/.env` to the public HTTPS URL. Preserve `SECRET_KEY` and the data directory when updating. Rerun the installer to pull the upstream image and apply configuration changes.
+## Home network and remote Stremio access
+
+- **Home network only:** No router port forwarding is required. A fresh install binds to `127.0.0.1:3000`. To use AIOStreams from another device at home, configure an HTTPS reverse proxy reachable on your LAN.
+- **Direct remote access:** Configure a publicly reachable HTTPS reverse proxy that sends requests to `127.0.0.1:3000`, then forward the router's external **TCP port** to the HTTPS listener on the host. For example, if your existing AIOStreams proxy listens on **8444**, forward **TCP 8444 → 8444** to that host. Use the proxy's actual listener port on a fresh setup. Keep port **3000** private.
+- **Remote access without port forwarding:** Use an HTTPS tunnel to the local AIOStreams endpoint, or use a private VPN if every remote Stremio device can join it and reach an HTTPS address for AIOStreams.
+
+Set `BASE_URL` in `/opt/aiostreams/.env` to the HTTPS URL that your Stremio clients will use, including the external port if it differs from 443. The host must be online and reachable for Stremio to use the addon.
+
+## Update or stop AIOStreams
+
+Preserve `SECRET_KEY` and the data directory when updating. Rerun the installer to pull the upstream image and apply configuration changes.
 
 To stop it while keeping your configuration and data:
 
