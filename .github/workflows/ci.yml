@@ -17,7 +17,7 @@ jobs:
       matrix:
         node: [18, 20, 22]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
@@ -28,7 +28,7 @@ jobs:
     name: Installer and Docker build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Lint shell scripts
         run: shellcheck -S warning install.sh build-installer.sh
       - name: Build single-file installer
