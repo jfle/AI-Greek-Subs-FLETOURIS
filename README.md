@@ -16,7 +16,7 @@
 
 ## Standalone editions
 
-- **HellasCue AI** installs Greek AI subtitles for Stremio with its own Linux installer and Docker packaging. [Open the HellasCue AI branch](https://github.com/jfle/aio-streams-subtitles-greek/tree/hellascue-ai)
+- **PolyCue AI** brings OpenSubtitles v3 and local-first AI translation into one Stremio addon. [Open the PolyCue AI branch](https://github.com/jfle/aio-streams-subtitles-greek/tree/polycue-ai)
 - **AIOStreams Standalone Installer** deploys the upstream AIOStreams image with its own configuration and data. [Open the AIOStreams branch](https://github.com/jfle/aio-streams-subtitles-greek/tree/aiostreams-standalone)
 
 This branch documents the bundled v2 release.
