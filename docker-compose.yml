@@ -1,7 +1,7 @@
 services:
-  hellascue-ai:
+  polycue-ai:
     build: .
-    image: ghcr.io/jfle/hellascue-ai:latest
+    image: ghcr.io/jfle/polycue-ai:latest
     restart: unless-stopped
     ports:
       - "127.0.0.1:7000:7000"

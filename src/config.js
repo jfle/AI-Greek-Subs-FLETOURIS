@@ -5,8 +5,11 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { PROVIDERS, LANGUAGES } = require('./providers');
+const { PROVIDERS } = require('./providers');
 const { DATA_DIR } = require('./paths');
+const { languageCode } = require('./languages');
+
+const OPEN_SUBTITLES_URL = endpoint(process.env.OPEN_SUBTITLES_URL) || 'https://opensubtitles-v3.strem.io';
 
 function loadSecret() {
   if (process.env.SECRET) {
@@ -23,12 +26,12 @@ const KEY = loadSecret();
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
 
 const DEFAULTS = {
-  provider: 'openai',
+  provider: 'native',
   apiKey: '',
   model: '',
   baseUrl: '',
   targetLang: 'ell',
-  sources: ['https://opensubtitles-v3.strem.io'],
+  sources: [OPEN_SUBTITLES_URL],
   prioritySources: sourceList(process.env.PRIORITY_SUBTITLE_SOURCES),
   localBaseUrl: endpoint(process.env.LOCAL_LLM_URL),
   maxCandidates: 1,
@@ -38,8 +41,8 @@ const DEFAULTS = {
   temperature: 0.3,
   showOriginalWhilePending: true,
   disableThinking: true,
-  prefetchNext: true,
-  earlyStart: true,
+  prefetchNext: false,
+  earlyStart: false,
   autoSync: true, // fingerprint / length / frame-rate / alignment checks (src/sync.js)
   syncNotes: true, // short on-screen note when timing was corrected or couldn't be verified
   credId: '',
@@ -72,7 +75,7 @@ function endpoint(value) {
 
 function normalizeConfig(input = {}) {
   const c = { ...DEFAULTS, ...input };
-  if (!PROVIDERS[c.provider]) c.provider = DEFAULTS.provider;
+  if (!Object.hasOwn(PROVIDERS, c.provider)) c.provider = DEFAULTS.provider;
   const p = PROVIDERS[c.provider];
   c.apiKey = String(c.apiKey || '').trim();
   c.model = String(c.model || '').trim() || p.defaultModel;
@@ -84,7 +87,7 @@ function normalizeConfig(input = {}) {
   }
   c.localBaseUrl = endpoint(c.localBaseUrl);
   c.prioritySources = sourceList(c.prioritySources);
-  if (!LANGUAGES[c.targetLang]) c.targetLang = DEFAULTS.targetLang;
+  c.targetLang = languageCode(c.targetLang) || DEFAULTS.targetLang;
   let sources = Array.isArray(c.sources) ? c.sources : String(c.sources || '').split(/[\n,]+/);
   sources = sources.map(normalizeSourceUrl).filter((s) => /^https?:\/\//i.test(s));
   c.sources = sources.length ? [...new Set(sources)] : DEFAULTS.sources;
@@ -107,11 +110,15 @@ function normalizeConfig(input = {}) {
   return c;
 }
 
+function canTranslate(cfg) {
+  return cfg.targetLang !== 'eng' && (cfg.provider !== 'native' || Boolean(cfg.localBaseUrl));
+}
+
 function encodeConfig(obj) {
   const cfg = normalizeConfig(obj);
   // Store only non-default values to keep the addon URL short.
   const p = PROVIDERS[cfg.provider];
-  const compact = {};
+  const compact = { v: 1 };
   for (const [k, v] of Object.entries(cfg)) {
     if (k === 'model' && v === p.defaultModel) continue;
     if (k === 'baseUrl' && v === p.baseUrl) continue;
@@ -131,7 +138,8 @@ function decodeConfig(token) {
     const decipher = crypto.createDecipheriv('aes-256-gcm', KEY, raw.subarray(0, 12));
     decipher.setAuthTag(raw.subarray(12, 28));
     const json = Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()]).toString('utf8');
-    return normalizeConfig(JSON.parse(json));
+    const { v, ...config } = JSON.parse(json);
+    return normalizeConfig(v ? config : { earlyStart: true, prefetchNext: true, ...config });
   } catch {
     return null;
   }
@@ -155,4 +163,4 @@ function sign(str) {
   return crypto.createHmac('sha256', KEY).update(str).digest('base64url').slice(0, 22);
 }
 
-module.exports = { DATA_DIR, DEFAULTS, normalizeConfig, encodeConfig, decodeConfig, sign, b64url, effectiveLimits };
+module.exports = { DATA_DIR, DEFAULTS, OPEN_SUBTITLES_URL, canTranslate, normalizeConfig, encodeConfig, decodeConfig, sign, b64url, effectiveLimits };

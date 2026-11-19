@@ -3,28 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HellasCue AI — Configure</title>
-<link rel="icon" type="image/png" href="/logo.png?v=3.0.0">
+<title>PolyCue AI — Configure</title>
+<link rel="icon" type="image/png" href="/logo.png?v=4.0.0">
 <style>
-  /* Greek flag theme: Greek blue #0D5EAF and white, nine stripes and the cross */
   :root {
-    --blue: #0D5EAF; --blue-d: #0a4a8a; --blue-l: #e8f0fa;
+    --blue: #126350; --blue-d: #0c4d3d; --blue-l: #e6f4ee;
     --bg: #f4f7fc; --panel: #ffffff; --panel2: #f7f9fd; --line: #d3dff0;
     --text: #0b1f3a; --muted: #5b6b84; --accent: var(--blue); --accent2: var(--blue);
     --ok: #17803d; --err: #c62828; --radius: 12px;
   }
   * { box-sizing: border-box; }
   body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
-  .flagbar { height: 18px; background: repeating-linear-gradient(180deg, var(--blue) 0 2px, #fff 2px 4px); }
-  .hero { position: relative; color: #fff; overflow: hidden;
-    background: repeating-linear-gradient(180deg, var(--blue) 0 calc(100%/9), #fff calc(100%/9) calc(200%/9)); }
-  .hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,74,138,.92) 0 46%, rgba(10,74,138,.55) 100%); }
+  .hero { color: #fff; background: #101821; border-bottom: 4px solid #7af1cb; }
   .hero-in { position: relative; max-width: 760px; margin: 0 auto; padding: 28px 20px 26px; display: flex; gap: 18px; align-items: center; }
-  .hero img { width: 76px; height: 76px; border-radius: 18px; box-shadow: 0 6px 18px rgba(0,0,0,.25); background: #fff; }
+  .hero img { width: 76px; height: 76px; border-radius: 18px; box-shadow: 0 6px 18px rgba(0,0,0,.25); background: #101821; object-fit: contain; }
   .hero h1 { font-size: 26px; margin: 0; letter-spacing: .3px; }
   .hero p { margin: 4px 0 0; opacity: .95; }
-  .cross { position: absolute; right: -30px; top: -30px; width: 190px; height: 190px; opacity: .18;
-    background: linear-gradient(#fff,#fff) center/38px 100% no-repeat, linear-gradient(#fff,#fff) center/100% 38px no-repeat; }
   .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 64px; }
   .sub { color: var(--muted); margin: 0 0 20px; }
   section { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--blue); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(13,94,175,.06); }
@@ -69,29 +63,33 @@
   .devcode { display: inline-block; margin: 10px 0 6px; padding: 8px 14px; font: 700 26px/1.1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 3px; background: #fff; border: 2px solid var(--blue); border-radius: 8px; color: var(--blue); }
   .linkbtn { background: none; border: 0; color: var(--blue); cursor: pointer; font: inherit; padding: 0; text-decoration: underline; }
   footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 24px; }
-  footer .mini { display: inline-block; width: 18px; height: 12px; vertical-align: -1px; margin-right: 6px; border: 1px solid var(--line);
-    background: linear-gradient(var(--blue),var(--blue)) 0 0/40% 55.6% no-repeat, repeating-linear-gradient(180deg, var(--blue) 0 11.11%, #fff 11.11% 22.22%); }
   @media (max-width: 600px) { .grid3 { grid-template-columns: 1fr; } .row { flex-direction: column; } .hero h1 { font-size: 21px; } }
 </style>
 </head>
 <body>
 <div class="hero">
-  <div class="cross"></div>
   <div class="hero-in">
-    <img src="/logo.png?v=3.0.0" alt="">
+    <img src="/logo.png?v=4.0.0" alt="">
     <div>
-      <h1>HellasCue AI</h1>
-      <p>Ελληνικοί υπότιτλοι με AI για το Stremio · AI Greek subtitles for Stremio</p>
+      <h1>PolyCue AI</h1>
+      <p>One addon. Your language.</p>
     </div>
   </div>
 </div>
-<div class="flagbar"></div>
 <div class="wrap">
-  <p class="sub">Finds English subtitles for whatever you play in Stremio, translates them to Greek with the AI model you choose, and adds them as a subtitle track.</p>
+  <p class="sub">Choose your language. Get OpenSubtitles v3 tracks first, with local or cloud AI translation as a backup.</p>
 
   <form id="form" autocomplete="off">
     <section>
-      <h2>AI provider</h2>
+      <h2>Subtitle language</h2>
+      <label for="targetLang">Language to show in Stremio</label>
+      <select id="targetLang"></select>
+    </section>
+    <section>
+      <h2>AI translation backup</h2>
+      <label for="localBaseUrl">Local Krikri API URL (optional)</label>
+      <input id="localBaseUrl" placeholder="http://gpu-pc.lan:1234/v1">
+      <div class="hint">With a local endpoint and a cloud provider configured, PolyCue tries Krikri first.</div>
       <label for="provider">Provider</label>
       <select id="provider"></select>
 
@@ -142,14 +140,16 @@
         <div class="hint" id="keyHint"></div>
       </div>
 
+      <div id="modelWrap">
       <label for="model">Model</label>
       <div class="row">
         <select id="modelSelect" style="display:none"></select>
         <input type="text" id="model" placeholder="model id">
         <button type="button" class="btn" id="loadModels">Load models</button>
       </div>
-      <div class="hint">Pick a model from the list, or click <b>Load models</b> to fetch every model your account can use. Small, fast models (luna / Flash / mini / Haiku class) work well, translate 2× faster and cost little.</div>
+      <div class="hint">Pick a model from the list, or click <b>Load models</b> to fetch every model your account can use. Check your provider’s pricing and usage limits.</div>
 
+      </div>
       <div id="baseUrlWrap">
         <label for="baseUrl">API base URL</label>
         <input type="text" id="baseUrl">
@@ -159,15 +159,13 @@
 
     <section>
       <h2>Translation</h2>
-      <label for="targetLang">Translate English to</label>
-      <select id="targetLang"></select>
 
       <label for="instructions">Extra instructions for the model <span class="hint">(optional)</span></label>
-      <textarea id="instructions" placeholder="e.g. Use informal, everyday Greek. Keep swear words."></textarea>
+      <textarea id="instructions" placeholder="e.g. Use informal, everyday dialogue."></textarea>
 
-      <label class="check"><input type="checkbox" id="autoTranslate"> <span>Start translating the best-matching English subtitle as soon as a video starts<div class="hint">Recommended — the Greek track is usually ready by the time you choose it.</div></span></label>
-      <label class="check"><input type="checkbox" id="earlyStart"> <span>Start translating as soon as you open a movie or episode, before you pick a stream<div class="hint">Gives the translation a head start, so playback usually begins fully in Greek.</div></span></label>
-      <label class="check"><input type="checkbox" id="prefetchNext"> <span>While you watch a series, translate the next episode in the background<div class="hint">The next episode then starts fully in Greek.</div></span></label>
+      <label class="check"><input type="checkbox" id="autoTranslate"> <span>Start translating the best-matching English subtitle as soon as a video starts<div class="hint">Runs automatically when OpenSubtitles has no track in the selected language.</div></span></label>
+      <label class="check"><input type="checkbox" id="earlyStart"> <span>Start translating as soon as you open a movie or episode, before you pick a stream<div class="hint">Starts early if the title lookup finds no existing track in the selected language.</div></span></label>
+      <label class="check"><input type="checkbox" id="prefetchNext"> <span>While you watch a series, translate the next episode in the background<div class="hint">Skips episodes that already have a track in the selected language.</div></span></label>
       <label class="check"><input type="checkbox" id="autoSync"> <span>Check that the subtitle matches your video, and fix its timing automatically<div class="hint">Matches the release (OpenSubtitles hash, release group, source, edition), rejects wrong types (CD parts, forced-only, wrong episode, not English), checks the length, detects frame-rate differences and aligns timing to the best-matching English subtitle.</div></span></label>
       <label class="check"><input type="checkbox" id="syncNotes"> <span>Show a short note at the start when the timing was corrected or couldn't be verified<div class="hint">If a subtitle is still off, use the player's own control: subtitles menu (CC) → Delay.</div></span></label>
       <label class="check"><input type="checkbox" id="showOriginalWhilePending"> <span>While a translation is still running, show the remaining lines in English (italics)</span></label>
@@ -178,16 +176,14 @@
         <summary>Advanced</summary>
         <label for="sources" style="margin-top:14px">English subtitle sources (Stremio subtitle addon URLs, one per line)</label>
         <textarea id="sources"></textarea>
-        <div class="hint">Defaults to OpenSubtitles v3. You can add any Stremio subtitle addon's manifest URL.</div>
+        <div class="hint">OpenSubtitles v3 is built in. Add optional sources if you need more English files.</div>
 
-        <label for="prioritySources">Subtitle addons above HellasCue AI (one manifest URL per line)</label>
+        <label for="prioritySources">Additional priority sources (one manifest URL per line)</label>
         <textarea id="prioritySources"></textarea>
-        <div class="hint">If an addon in this list offers the selected language, HellasCue AI offers a backup track and translates when the player requests it. Early start and next-episode prefetch pause while this list is in use.</div>
-        <label for="localBaseUrl">Local Krikri API URL (checked before your cloud provider)</label>
-        <input id="localBaseUrl" placeholder="http://gpu-pc.lan:1234/v1">
+        <div class="hint">Use this for languages already supplied by another addon. The PolyCue AI translation remains available on demand.</div>
 
         <div class="grid3" style="margin-top:14px">
-          <div><label for="maxCandidates">Greek AI tracks (1 recommended)</label><input type="number" id="maxCandidates" min="1" max="10"></div>
+          <div><label for="maxCandidates">AI tracks (1 recommended)</label><input type="number" id="maxCandidates" min="1" max="10"></div>
           <div><label for="batchSize">Lines per request</label><input type="number" id="batchSize" min="0" max="150" placeholder="auto"></div>
           <div><label for="concurrency">Parallel requests</label><input type="number" id="concurrency" min="0" max="32" placeholder="auto"></div>
         </div>
@@ -233,9 +229,9 @@
   const $ = (id) => document.getElementById(id);
   const cfg = B.config || {};
   const defaults = {
-    provider: 'openai', targetLang: 'ell', sources: ['https://opensubtitles-v3.strem.io'], maxCandidates: 1,
-    autoTranslate: true, batchSize: 0, concurrency: 0, earlyStart: true, autoSync: true, syncNotes: true, temperature: 0.3, showOriginalWhilePending: true, disableThinking: true,
-    prefetchNext: true, instructions: '', credId: ''
+    provider: 'native', targetLang: 'ell', sources: ['https://opensubtitles-v3.strem.io'], maxCandidates: 1,
+    autoTranslate: true, batchSize: 0, concurrency: 0, earlyStart: false, autoSync: true, syncNotes: true, temperature: 0.3, showOriginalWhilePending: true, disableThinking: true,
+    prefetchNext: false, instructions: '', credId: ''
   };
   Object.assign(defaults, B.defaults);
   let c = Object.assign({}, defaults, cfg);
@@ -294,12 +290,14 @@
 
   function onProvider(initial) {
     const p = B.providers[$('provider').value];
+    const showProvider = $('provider').value !== 'native';
+    $('modelWrap').style.display = showProvider ? '' : 'none';
     if (!initial || !$('model').value) $('model').value = p.defaultModel;
     fillModels(p.models);
     if (!initial || !$('baseUrl').value) $('baseUrl').value = p.baseUrl;
     $('model').placeholder = p.defaultModel;
     $('keyHint').innerHTML = p.keyUrl ? `Get a key at <a href="${p.keyUrl}" target="_blank" rel="noopener">${new URL(p.keyUrl).host}</a>. It is stored encrypted inside your addon URL — not on this page.` : 'Leave empty if your endpoint needs no key.';
-    $('baseUrlWrap').style.display = p.auth === 'chatgpt' ? 'none' : '';
+    $('baseUrlWrap').style.display = !showProvider || p.auth === 'chatgpt' ? 'none' : '';
     const alt = ALT_SIGNIN[$('provider').value];
     $('authBox').style.display = p.auth || alt ? '' : 'none';
     $('orAuth').style.display = p.auth === 'openrouter' ? '' : 'none';
@@ -309,7 +307,7 @@
     stopXaiPoll();
     $('viaOr').style.display = alt ? '' : 'none';
     if (alt) { $('viaOrText').innerHTML = alt.text; $('viaOrBtn').textContent = alt.button; }
-    $('keyWrap').style.display = p.auth === 'chatgpt' ? 'none' : '';
+    $('keyWrap').style.display = !showProvider || p.auth === 'chatgpt' ? 'none' : '';
     $('apiKeyLabel').textContent = p.auth === 'openrouter' ? '…or paste an API key' : p.auth === 'xai' ? '…or paste an xAI API key' : 'API key';
     if (!initial && credential && credential.type !== p.auth) { credId = ''; credential = null; }
     renderAuth();
@@ -353,7 +351,7 @@
   onProvider(true);
   $('provider').addEventListener('change', () => onProvider(false));
   if (B.passwordRequired) $('pwSection').style.display = '';
-  $('footer').innerHTML = `<span class="mini"></span>HellasCue AI v${B.version}`;
+  $('footer').innerHTML = `PolyCue AI v${B.version}`;
 
   function collect() {
     return {

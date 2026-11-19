@@ -7,16 +7,14 @@ const {
 } = require('./sync');
 const { translationState } = require('./translator');
 
-function isTargetLanguage(value, target) {
-  const code = String(value || '').trim().toLowerCase().split(/[-_]/)[0];
-  return code === target || (target === 'ell' && ['el', 'gre', 'greek', 'ελληνικά'].includes(code));
-}
+const { OPEN_SUBTITLES_URL, canTranslate, sign } = require('./config');
+const { languageCode, matchesLanguage } = require('./languages');
 
-const isEnglish = (lang) => ['eng', 'en', 'english', 'en-us', 'en-gb'].includes(String(lang || '').toLowerCase());
+const isEnglish = (lang) => languageCode(lang) === 'eng';
 
-async function fetchSourceSubs(cfg, type, id, extra, ctx) {
+async function fetchSourceSubs(cfg, type, id, extra, ctx = matchContext(type, id, extra)) {
   const suffix = extra ? `/${extra}` : '';
-  const sources = [...new Set([...cfg.sources, ...cfg.prioritySources])];
+  const sources = [...new Set([OPEN_SUBTITLES_URL, ...cfg.sources, ...cfg.prioritySources])];
   const responses = await Promise.all(
     sources.map(async (base) => {
       try {
@@ -29,11 +27,24 @@ async function fetchSourceSubs(cfg, type, id, extra, ctx) {
       }
     }),
   );
-  const hasPreferred = responses.some((list, i) =>
+  const nativeTracks = [];
+  const nativeUrls = new Set();
+  for (const subtitle of responses[0]) {
+    if (!subtitle || typeof subtitle.url !== 'string' || !/^https?:\/\//i.test(subtitle.url)
+        || !matchesLanguage(subtitle.lang, cfg.targetLang) || nativeUrls.has(subtitle.url)) continue;
+    nativeUrls.add(subtitle.url);
+    nativeTracks.push({
+      id: `opensubtitles-${sign(subtitle.url)}`,
+      url: subtitle.url,
+      lang: cfg.targetLang,
+      label: 'OpenSubtitles v3',
+    });
+  }
+  const hasPreferred = nativeUrls.size > 0 || responses.some((list, i) =>
     cfg.prioritySources.includes(sources[i]) &&
-    list.some((s) => s?.url && isTargetLanguage(s.lang, cfg.targetLang) && !fingerprint(s, ctx).reject),
+    list.some((s) => s?.url && matchesLanguage(s.lang, cfg.targetLang) && !fingerprint(s, ctx).reject),
   );
-  const results = cfg.sources.map((source) => responses[sources.indexOf(source)]);
+  const results = [...new Set([...cfg.sources, OPEN_SUBTITLES_URL])].map((source) => responses[sources.indexOf(source)]);
   const seen = new Set();
   const out = [];
   // Interleave sources so each configured addon contributes its best match first.
@@ -47,7 +58,7 @@ async function fetchSourceSubs(cfg, type, id, extra, ctx) {
       }
     }
   }
-  return { list: out, hasPreferred };
+  return { list: out, hasPreferred, nativeTracks };
 }
 
 const withBudget = (promise, ms) => Promise.race([promise, new Promise((r) => setTimeout(() => r(undefined), ms))]);
@@ -63,15 +74,16 @@ const fmtMin = (ms) => (ms ? `${Math.round(ms / 60000)} min` : null);
  */
 async function selectSubtitles(cfg, type, id, extra = '', opts = {}) {
   const ctx = matchContext(type, id, extra);
-  const { list, hasPreferred } = await fetchSourceSubs(cfg, type, id, extra, ctx);
+  const { list, hasPreferred, nativeTracks } = await fetchSourceSubs(cfg, type, id, extra, ctx);
   const report = {
     video: { type, id, filename: ctx.filename || null, hash: Boolean(ctx.videoHash), release: ctx.release ? { group: ctx.release.group, source: ctx.release.source, edition: ctx.release.edition } : null },
     runtime: null,
     candidates: [],
     hasPreferred,
+    nativeCount: nativeTracks.length,
     decision: null,
   };
-  if (!list.length) return { tracks: [], report };
+  if (!list.length || !canTranslate(cfg)) return { nativeTracks, tracks: [], report };
 
   const cands = list.map((s, i) => ({ url: s.url, meta: s, order: i, fp: fingerprint(s, ctx) }));
   for (const c of cands) if (c.fp.fps) rememberFps(c.url, c.fp.fps);
@@ -82,7 +94,7 @@ async function selectSubtitles(cfg, type, id, extra = '', opts = {}) {
     const ready = order.slice(0, 3).findIndex((c) => translationState(c.url, cfg) !== 'none');
     if (ready > 0) order.unshift(order.splice(ready, 1)[0]);
     report.decision = { mode: 'off', chosen: order[0].meta.subtitleFileName || order[0].url };
-    return { tracks: order.slice(0, cfg.maxCandidates).map((c) => ({ src: c.url, ref: null, q: 'unverified' })), report };
+    return { nativeTracks, tracks: order.slice(0, cfg.maxCandidates).map((c) => ({ src: c.url, ref: null, q: 'unverified' })), report };
   }
 
   const accepted = cands.filter((c) => !c.fp.reject).sort(byRank);
@@ -136,7 +148,7 @@ async function selectSubtitles(cfg, type, id, extra = '', opts = {}) {
   if (!primary) {
     report.decision = { chosen: null, why: 'no usable English subtitle' };
     report.candidates = cands.map((c) => describe(c));
-    return { tracks: [], report };
+    return { nativeTracks, tracks: [], report };
   }
 
   let q = reference ? (reference.fp.hash ? 'hash' : 'release') : primary.length && primary.length.ok ? 'length' : 'unverified';
@@ -184,7 +196,7 @@ async function selectSubtitles(cfg, type, id, extra = '', opts = {}) {
   }
   report.candidates = cands.map((c) => describe(c, c === primary));
   report.decision = { chosen: primary.meta.subtitleFileName || primary.url, why: how, quality: q, reuse };
-  return { tracks, report, primary };
+  return { nativeTracks, tracks, report, primary };
 }
 
 function describe(c, chosen = false) {

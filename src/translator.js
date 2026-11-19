@@ -103,6 +103,7 @@ async function translateLines(lines, context, cfg) {
       releaseSlot(poolKey);
     }
   }
+  if (cfg.provider === 'native') throw new Error('Local Krikri is unavailable and no cloud provider is configured');
   return translate(cfg);
 }
 

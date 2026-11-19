@@ -13,7 +13,7 @@ let token;
 test.before(async () => {
   mock = await startMockProviders({ lines: 120 });
   addon = await startAddon(mock.base);
-  const r = await api(addon.base, 'encode', { config: { provider: 'custom', baseUrl: `${mock.base}/v1`, model: 'local-model', sources: [mock.base] } });
+  const r = await api(addon.base, 'encode', { config: { provider: 'custom', baseUrl: `${mock.base}/v1`, model: 'local-model', earlyStart: true, prefetchNext: true, sources: [mock.base] } });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   token = r.body.token;
 });
@@ -26,7 +26,7 @@ test('health, unconfigured manifest and configure page', async () => {
   const h = await getJson(`${addon.base}/health`);
   assert.deepEqual(h.body, { ok: true, version: pkg.version });
   const m = await getJson(`${addon.base}/manifest.json`);
-  assert.equal(m.body.name, 'HellasCue AI');
+  assert.equal(m.body.name, 'PolyCue AI');
   assert.equal(m.body.id, 'community.ai-greek-subs-fletouris');
   assert.equal(m.body.behaviorHints.configurationRequired, true);
   assert.deepEqual(m.body.resources, ['subtitles']);
@@ -50,7 +50,7 @@ test('configured manifest advertises subtitles and the early-start stream resour
   assert.equal(m.body.behaviorHints.configurationRequired, false);
   assert.equal(m.body.resources[0], 'subtitles');
   assert.equal(m.body.resources[1].name, 'stream');
-  assert.match(m.body.description, /local-model/);
+  assert.match(m.body.description, /OpenSubtitles v3/);
   assert.match(m.body.logo, /\/logo\.png\?v=/);
   const page = await (await fetch(`${addon.base}/${token}/configure`)).text();
   assert.match(page, /"model":"local-model"/);
@@ -128,11 +128,13 @@ test('a higher-priority Greek track leaves AI translation available on demand', 
   const calls = mock.state.chatCalls;
   await getJson(`${configured}/stream/movie/${id}.json`);
   const { body: { subtitles } } = await getJson(`${configured}/subtitles/movie/${id}.json`);
-  assert.equal(subtitles.length, 1);
-  assert.equal(subtitles[0].lang, 'ell');
+  assert.equal(subtitles.length, 2);
+  assert.match(subtitles[0].id, /^opensubtitles-/);
+  assert.match(subtitles[1].id, /^ai-/);
+  assert.ok(subtitles.every((track) => track.lang === 'ell'));
   assert.ok(!(await getJson(`${addon.base}/status`)).body.jobs.some((job) => job.status === 'translating'));
   assert.equal(mock.state.chatCalls, calls);
-  assert.match(await (await fetch(subtitles[0].url)).text(), /ΕΛ Line 0/);
+  assert.match(await (await fetch(subtitles[1].url)).text(), /ΕΛ Line 0/);
   assert.ok(mock.state.chatCalls > calls);
 
   const withoutGreek = 'tt0000102';
@@ -140,6 +142,58 @@ test('a higher-priority Greek track leaves AI translation available on demand', 
   const afterSelection = mock.state.chatCalls;
   assert.equal((await getJson(`${configured}/subtitles/movie/${withoutGreek}.json`)).body.subtitles.length, 1);
   await waitFor(() => mock.state.chatCalls > afterSelection);
+  await waitFor(async () => (await getJson(`${addon.base}/status`)).body.jobs.every((job) => job.status === 'done'));
+});
+
+test('French installation returns built-in OpenSubtitles tracks without credentials', async () => {
+  const id = 'tt0000201';
+  mock.state.listings[id] = [
+    { file: '-french-1', lang: 'fra' },
+    { file: '-french-1', lang: 'fre' },
+    { file: '-french-2', lang: 'fr-CA' },
+    { file: '-greek', lang: 'ell' },
+    { file: '-english', lang: 'eng' },
+  ];
+  const calls = mock.state.chatCalls;
+  const encoded = await api(addon.base, 'encode', { config: { targetLang: 'fr' } });
+  assert.equal(encoded.status, 200);
+  const base = `${addon.base}/${encoded.body.token}`;
+  const manifest = (await getJson(`${base}/manifest.json`)).body;
+  assert.match(manifest.description, /French/);
+  assert.deepEqual(manifest.resources, ['subtitles']);
+  const result = (await getJson(`${base}/subtitles/movie/${id}.json`)).body.subtitles;
+  assert.deepEqual(result.map((track) => track.lang), ['fre', 'fre']);
+  assert.ok(result.every((track) => track.label === 'OpenSubtitles v3'));
+  assert.equal(mock.state.chatCalls, calls);
+});
+
+test('French backup translates locally first and falls back to cloud when needed', async () => {
+  const id = 'tt0000202';
+  mock.state.listings[id] = [{ file: '-english', lang: 'eng' }, { file: '-french', lang: 'fre' }];
+  const local = await startMockProviders();
+  const cloud = await startMockProviders();
+  try {
+    local.state.localModel = true;
+    const config = {
+      provider: 'openai', apiKey: 'cloud-key', targetLang: 'fr', model: 'cloud-model',
+      localBaseUrl: `${local.base}/v1`, baseUrl: `${cloud.base}/v1`,
+    };
+    const encoded = await api(addon.base, 'encode', { config });
+    assert.equal(encoded.status, 200);
+    const { body: { subtitles } } = await getJson(`${addon.base}/${encoded.body.token}/subtitles/movie/${id}.json`);
+    assert.deepEqual(subtitles.map((track) => track.label), ['OpenSubtitles v3', 'PolyCue AI translation']);
+    assert.equal(local.state.chatCalls, 0);
+    assert.equal(cloud.state.chatCalls, 0);
+    await (await fetch(subtitles[1].url)).text();
+    assert.match(local.state.chatBodies[0].messages[0].content, /spoken French/);
+    assert.equal(cloud.state.chatCalls, 0);
+    local.state.rejectChat = true;
+    assert.equal((await api(addon.base, 'test', { config })).status, 200);
+    assert.match(cloud.state.chatBodies[0].messages[0].content, /spoken French/);
+  } finally {
+    await local.close();
+    await cloud.close();
+  }
 });
 
 test('Krikri runs first with thinking off and cloud takes over if it fails', async () => {

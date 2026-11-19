@@ -2,7 +2,17 @@
 // AI provider adapters. Most providers expose an OpenAI-compatible Chat Completions API;
 // Anthropic and Google Gemini use their native APIs.
 
+const { LANGUAGES } = require('./languages');
+
 const PROVIDERS = {
+  native: {
+    label: 'OpenSubtitles with optional local Krikri',
+    type: 'native',
+    baseUrl: '',
+    defaultModel: '',
+    models: [],
+    keyUrl: '',
+  },
   openai: {
     label: 'OpenAI',
     type: 'openai',
@@ -96,28 +106,6 @@ const PROVIDERS = {
   },
 };
 
-// Stremio / OpenSubtitles use ISO 639-2 (bibliographic) codes.
-const LANGUAGES = {
-  ell: 'Greek',
-  bul: 'Bulgarian',
-  hrv: 'Croatian',
-  cze: 'Czech',
-  dut: 'Dutch',
-  fre: 'French',
-  ger: 'German',
-  hun: 'Hungarian',
-  ita: 'Italian',
-  pol: 'Polish',
-  por: 'Portuguese',
-  rum: 'Romanian',
-  rus: 'Russian',
-  scc: 'Serbian',
-  spa: 'Spanish',
-  swe: 'Swedish',
-  tur: 'Turkish',
-  ukr: 'Ukrainian',
-};
-
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class HttpError extends Error {
@@ -173,8 +161,8 @@ function openaiHeaders(cfg) {
   const key = resolveKey(cfg);
   if (key) h.Authorization = `Bearer ${key}`;
   if (cfg.provider === 'openrouter') {
-    h['HTTP-Referer'] = 'https://github.com/aio-streams-subtitles-greek';
-    h['X-Title'] = 'HellasCue AI';
+    h['HTTP-Referer'] = 'https://github.com/jfle/aio-streams-subtitles-greek/tree/polycue-ai';
+    h['X-Title'] = 'PolyCue AI';
   }
   return h;
 }

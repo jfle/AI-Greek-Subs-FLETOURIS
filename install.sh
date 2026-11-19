@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# HellasCue AI installer — Debian / Ubuntu / Raspberry Pi OS / Armbian (amd64, arm64, armhf).
+# PolyCue AI installer — Debian / Ubuntu / Raspberry Pi OS / Armbian (amd64, arm64, armhf).
 #
 #   sudo ./install.sh                  install or update (keeps settings, cache and sign-ins)
 #   sudo ./install.sh --https none     plain HTTP only (Stremio desktop on your LAN)
@@ -16,18 +16,19 @@
 # After installing, open the printed address, configure your AI provider and click "Install in Stremio".
 set -euo pipefail
 
-APP=hellascue-ai
-NAME="HellasCue AI"
+APP=polycue-ai
+NAME="PolyCue AI"
 DIR=/opt/$APP
 SVC_USER=aigreeksubs
 PORT=7000
 HTTPS=localip          # localip = HTTPS on your LAN via <ip>.local-ip.sh + nginx ; none = HTTP only
 UNINSTALL=0
 PURGE=0
-OLD_DIRS=(/opt/aio-streams-subtitles-greek /opt/ai-greek-subs-fletouris /opt/stremio-ai-subtitle-translator)
-OLD_SERVICES=(aio-streams-subtitles-greek ai-greek-subs-fletouris stremio-ai-subtitles)
-OLD_SITES=(aio-streams-subtitles-greek ai-greek-subs-fletouris stremio-ai-subtitles)
-OLD_CONF=/etc/aio-streams-subtitles-greek
+OLD_DIRS=(/opt/hellascue-ai /opt/aio-streams-subtitles-greek /opt/ai-greek-subs-fletouris /opt/stremio-ai-subtitle-translator)
+OLD_SERVICES=(hellascue-ai aio-streams-subtitles-greek ai-greek-subs-fletouris stremio-ai-subtitles)
+OLD_SITES=(hellascue-ai aio-streams-subtitles-greek ai-greek-subs-fletouris stremio-ai-subtitles)
+OLD_CONF=/etc/hellascue-ai
+[[ -r "$OLD_CONF.conf" || -r "$OLD_CONF.env" ]] || OLD_CONF=/etc/aio-streams-subtitles-greek
 [[ -r "$OLD_CONF.conf" || -r "$OLD_CONF.env" ]] || OLD_CONF=/etc/ai-greek-subs-fletouris
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF=/etc/$APP.conf      # settings remembered between updates (root only)
@@ -70,7 +71,7 @@ if [[ -n "$PUBLIC_IP" && "$HTTPS" == none ]]; then die "--public-ip needs the bu
 
 echo
 echo "${c_b}  ███  ${NAME}${c_0}"
-echo "${c_b}  ═══  AI Greek subtitles for Stremio${c_0}"
+echo "${c_b}  ═══  OpenSubtitles and AI translation for Stremio${c_0}"
 echo
 
 # ---------------------------------------------------------------- uninstall
@@ -186,7 +187,7 @@ if [[ "$HTTPS" == localip ]]; then
   mkdir -p /etc/ssl/local-ip
   cat > /usr/local/bin/refresh-local-ip-cert <<'EOF'
 #!/bin/sh
-# Refreshes the public wildcard certificate for *.local-ip.sh (LAN HTTPS for HellasCue AI).
+# Refreshes the public wildcard certificate for *.local-ip.sh (LAN HTTPS for PolyCue AI).
 set -e
 curl -fsS -m 30 -o /tmp/lip.pem https://local-ip.sh/server.pem
 curl -fsS -m 30 -o /tmp/lip.key https://local-ip.sh/server.key
@@ -261,7 +262,7 @@ umask 022
 step "Creating service $APP"
 cat > "/etc/systemd/system/$APP.service" <<EOF
 [Unit]
-Description=$NAME (Stremio AI Greek subtitles)
+Description=$NAME (Stremio subtitle addon)
 After=network-online.target
 Wants=network-online.target
 
@@ -318,5 +319,5 @@ fi
 echo
 echo "   Logs:    journalctl -u $APP -f"
 echo "   Update:  run the newer installer the same way (settings are kept)"
-echo "   Remove:  sudo $DIR/install.sh --uninstall   (add --purge to delete HellasCue AI data)"
+echo "   Remove:  sudo $DIR/install.sh --uninstall   (add --purge to delete PolyCue AI data)"
 echo

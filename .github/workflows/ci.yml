@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [hellascue-ai]
+    branches: [polycue-ai]
   pull_request:
 
 permissions:
@@ -37,18 +37,18 @@ jobs:
         run: |
           sudo mkdir -p /opt/aiostreams
           printf 'preserve-me\n' | sudo tee /opt/aiostreams/compose.yaml
-          sudo bash dist/hellascue-ai-installer.sh --https none
+          sudo bash dist/polycue-ai-installer.sh --https none
           curl -fsS http://127.0.0.1:7000/health
-          curl -fsS http://127.0.0.1:7000/manifest.json | grep -F 'HellasCue AI'
-          sudo bash dist/hellascue-ai-installer.sh --uninstall --purge
+          curl -fsS http://127.0.0.1:7000/manifest.json | grep -F 'PolyCue AI'
+          sudo bash dist/polycue-ai-installer.sh --uninstall --purge
           sudo grep -Fx 'preserve-me' /opt/aiostreams/compose.yaml
       - uses: actions/upload-artifact@v4
         with:
-          name: hellascue-ai-installer
+          name: polycue-ai-installer
           path: dist/*
       - name: Build Docker image
         run: |
-          docker build -t hellascue-ai:ci .
-          docker run -d --name aigs-ci -p 7001:7000 hellascue-ai:ci
+          docker build -t polycue-ai:ci .
+          docker run -d --name aigs-ci -p 7001:7000 polycue-ai:ci
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:7001/health && break; sleep 1; done
           docker rm -f aigs-ci

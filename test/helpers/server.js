@@ -39,6 +39,7 @@ async function startAddon(mockBase, extraEnv = {}) {
     XAI_OAUTH_API_URL: `${mockBase}/xai/api/v1`,
     XAI_OAUTH_PROXY_URL: `${mockBase}/xai/proxy/v1`,
     CINEMETA_URL: mockBase,
+    OPEN_SUBTITLES_URL: mockBase,
     ...extraEnv,
   };
   const child = spawn(process.execPath, ['server.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });

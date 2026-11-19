@@ -15,7 +15,7 @@ Only the latest release is supported with fixes.
 | Subtitle downloads | The server only downloads subtitle URLs it handed out itself (HMAC-signed links), so it can't be abused as an open proxy. |
 | Service account | The installer runs the addon as an unprivileged `aigreeksubs` user with `NoNewPrivileges`, `ProtectSystem=full` and write access only to its data folder. |
 | Configure page | `CONFIG_PASSWORD` protects testing, model listing, sign-in and link generation. It is generated automatically when outside access is enabled; without it, configuration requests arriving through the external address are refused. Wrong passwords are delayed 1 s and an address is locked out for 15 minutes after 10 failures. |
-| Outside access | Only through HTTPS. Secrets (`CONFIG_PASSWORD`, `EXTERNAL_URL`) live in `/etc/hellascue-ai.env` (root-only), not in the world-readable systemd unit. |
+| Outside access | Only through HTTPS. Secrets (`CONFIG_PASSWORD`, `EXTERNAL_URL`) live in `/etc/polycue-ai.env` (root-only), not in the world-readable systemd unit. |
 
 
 ## What you should do

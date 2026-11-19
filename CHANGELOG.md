@@ -2,6 +2,12 @@
 
 All notable changes to this project. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org).
 
+## [4.0.0] — 2026-11-19
+
+- Relaunch as PolyCue AI with built-in OpenSubtitles v3, a full language picker, and optional local or cloud translation.
+- List native tracks before the on-demand AI backup. Support installing without AI credentials.
+- Migrate HellasCue AI and older subtitle deployments to the new service name.
+
 ## [3.0.0] — 2026-11-19
 
 - Launch HellasCue AI as a standalone Stremio subtitle addon with dedicated installers, packaging and branding.

@@ -1,11 +1,11 @@
 'use strict';
-// HellasCue AI — zero-dependency Node.js Stremio addon server.
+// PolyCue AI — zero-dependency Node.js Stremio addon server.
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { PROVIDERS, LANGUAGES, listModels } = require('./src/providers');
-const { DEFAULTS, normalizeConfig, encodeConfig, decodeConfig, sign, b64url } = require('./src/config');
+const { DEFAULTS, canTranslate, normalizeConfig, encodeConfig, decodeConfig, sign, b64url } = require('./src/config');
 const { getOrStartJob, renderJob, translateLines, status, openingReady, etaMs } = require('./src/translator');
 const { selectSubtitles } = require('./src/select');
 const { alignmentFor, isNoop, retimeCues, describeFix } = require('./src/sync');
@@ -36,19 +36,17 @@ const STATIC = {
 };
 
 function manifest(cfg, base) {
-  const lang = cfg ? LANGUAGES[cfg.targetLang] : 'Greek';
+  const lang = cfg ? LANGUAGES[cfg.targetLang] : 'your language';
   return {
     id: 'community.ai-greek-subs-fletouris',
     version: pkg.version,
-    name: 'HellasCue AI',
+    name: 'PolyCue AI',
     logo: `${base}/logo.png?v=${pkg.version}`,
-    background: `${base}/background.png`,
-    description:
-      `Translates English subtitles to ${lang} with AI` +
-      (cfg ? ` (${PROVIDERS[cfg.provider].label} · ${cfg.model}).` : '. Configure your AI provider to start.'),
+    background: `${base}/background.png?v=${pkg.version}`,
+    description: `OpenSubtitles v3 and optional AI backup for subtitles in ${lang}.`,
     // The (always empty) stream resource only tells the addon which title was opened, so translation
     // can start while the viewer is still picking a stream.
-    resources: cfg && cfg.autoTranslate && cfg.earlyStart && !cfg.prioritySources.length
+    resources: cfg && canTranslate(cfg) && cfg.autoTranslate && cfg.earlyStart && !cfg.prioritySources.length
       ? ['subtitles', { name: 'stream', types: ['movie', 'series'], idPrefixes: ['tt', 'kitsu'] }]
       : ['subtitles'],
     types: ['movie', 'series'],
@@ -121,15 +119,15 @@ const earlyStarted = new Map();
 async function handleStream(req, res, token, type, id) {
   send(res, 200, { streams: [] }, undefined, { 'Cache-Control': 'no-store' });
   const cfg = decodeConfig(token);
-  if (!cfg || !cfg.autoTranslate || !cfg.earlyStart || cfg.prioritySources.length) return;
+  if (!cfg || !canTranslate(cfg) || !cfg.autoTranslate || !cfg.earlyStart || cfg.prioritySources.length) return;
   id = decodeURIComponent(id);
   if (type === 'series' && !/:\d+:\d+$/.test(id)) return;
   const key = `${type}|${id}|${cfg.provider}|${cfg.model}|${cfg.targetLang}`;
   if (earlyStarted.has(key) && Date.now() - earlyStarted.get(key) < 600e3) return;
   earlyStarted.set(key, Date.now());
   try {
-    const { tracks } = await selectSubtitles(cfg, type, id, '', { budgetMs: 5000 });
-    if (!tracks[0]) return;
+    const { tracks, report } = await selectSubtitles(cfg, type, id, '', { budgetMs: 5000 });
+    if (!tracks[0] || report.hasPreferred) return;
     const job = getOrStartJob(tracks[0].src, cfg);
     job.lastRequested = Math.max(job.lastRequested || 0, Date.now() - 1800e3);
     console.log(`[early] ${type} ${id} -> ${job.key} (${job.status})`);
@@ -156,14 +154,15 @@ function readPayload(src) {
 async function handleSubtitles(req, res, token, type, id, extra) {
   const cfg = decodeConfig(token);
   if (!cfg) return send(res, 200, { subtitles: [] });
-  const { tracks, report } = await selectSubtitles(cfg, type, id, extra);
+  const { nativeTracks, tracks, report } = await selectSubtitles(cfg, type, id, extra);
   const base = baseUrl(req);
-  const subtitles = tracks.map((t, i) => {
+  const translated = tracks.map((t, i) => {
     const src = trackPayload(t);
     return {
       id: `ai-${cfg.targetLang}-${i + 1}-${sign(src).slice(0, 8)}`,
       url: `${base}/${token}/t/${src}/${sign(src)}.srt`,
       lang: cfg.targetLang,
+      label: 'PolyCue AI translation',
     };
   });
   // Pre-translate the chosen English subtitle as soon as playback starts.
@@ -175,9 +174,9 @@ async function handleSubtitles(req, res, token, type, id, extra) {
   }
   const d = report.decision || {};
   console.log(`[subs] ${type} ${decodeURIComponent(id)}: ${tracks.length} track(s)${report.hasPreferred ? " · on demand (higher-priority subtitle available)" : ""}${d.chosen ? ` · ${d.chosen} (${d.why})` : ''}${d.reuse ? ` · reusing ${d.reuse.from} (${d.reuse.fix})` : ''}`);
-  send(res, 200, { subtitles, cacheMaxAge: 60 }, undefined, { 'Cache-Control': 'max-age=60' });
+  send(res, 200, { subtitles: [...nativeTracks, ...translated], cacheMaxAge: 60 }, undefined, { 'Cache-Control': 'max-age=60' });
   // Start the next episode only after this one is translated, so it never takes LM Studio slots from it.
-  if (cfg.prefetchNext && !cfg.prioritySources.length && type === 'series') {
+  if (canTranslate(cfg) && !report.hasPreferred && cfg.prefetchNext && !cfg.prioritySources.length && type === 'series') {
     Promise.resolve(current && current.promise).then(() => prefetchNextEpisode(cfg, decodeURIComponent(id)));
   }
 }
@@ -190,7 +189,7 @@ async function handleReport(req, res, token, type, id, extra) {
   send(res, 200, { ...report, tracks: tracks.map((t) => ({ translate: t.src, retimeTo: t.ref, quality: t.q })) }, undefined, { 'Cache-Control': 'no-store' });
 }
 
-// While an episode plays, translate the next one at the lowest priority so it starts fully in Greek.
+// While an episode plays, translate the next one at the lowest priority so the translation is ready sooner.
 const prefetched = new Map();
 async function prefetchNextEpisode(cfg, id) {
   const m = /^(.+):(\d+):(\d+)$/.exec(id);
@@ -200,8 +199,8 @@ async function prefetchNextEpisode(cfg, id) {
   if (prefetched.has(key) && Date.now() - prefetched.get(key) < 6 * 3600e3) return;
   prefetched.set(key, Date.now());
   try {
-    const { tracks } = await selectSubtitles(cfg, 'series', nextId, '', { budgetMs: 8000 });
-    if (!tracks[0]) return;
+    const { tracks, report } = await selectSubtitles(cfg, 'series', nextId, '', { budgetMs: 8000 });
+    if (!tracks[0] || report.hasPreferred) return;
     const job = getOrStartJob(tracks[0].src, cfg);
     job.lastRequested = Math.max(job.lastRequested || 0, 1); // lowest priority
     console.log(`[prefetch] ${nextId} -> ${job.key} (${job.status})`);
@@ -314,7 +313,7 @@ async function handleApi(req, res, action) {
       if (pa === 'chatgpt') {
         if (!cfg.credId) throw new Error('Sign in with ChatGPT first');
         if (!cfg.model) throw new Error('Choose a model (click "Load models")');
-      } else if (!cfg.apiKey && !cfg.credId && cfg.provider !== 'custom') {
+      } else if (!cfg.apiKey && !cfg.credId && !['custom', 'native'].includes(cfg.provider)) {
         throw new Error(pa ? 'Sign in or paste an API key first' : 'An API key is required for this provider');
       }
       const token = encodeConfig(cfg);
@@ -330,10 +329,12 @@ async function handleApi(req, res, action) {
     }
     if (action === 'models') {
       const cfg = normalizeConfig(body.config || {});
+      if (cfg.provider === 'native') return send(res, 200, { models: cfg.localBaseUrl ? [PROVIDERS.custom.defaultModel] : [] });
       return send(res, 200, { models: await listModels(cfg) });
     }
     if (action === 'test') {
       const cfg = normalizeConfig(body.config || {});
+      if (!canTranslate(cfg)) throw new Error('Set a local Krikri endpoint or choose a cloud provider and a non-English target language first');
       const started = Date.now();
       const out = await translateLines(
         { 1: "Where were you last night? I've been calling you for hours!", 2: '<i>Come on, we have to go.</i>' },
@@ -429,7 +430,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`HellasCue AI v${pkg.version} listening on http://${HOST}:${PORT}`);
+  console.log(`PolyCue AI v${pkg.version} listening on http://${HOST}:${PORT}`);
   if (PUBLIC_URL) console.log(`Home network address: ${PUBLIC_URL}`);
   if (EXTERNAL_URL) console.log(`External address:     ${EXTERNAL_URL}${CONFIG_PASSWORD ? '' : '  (WARNING: no CONFIG_PASSWORD — the configure page is refused from outside)'}`);
   console.log(`Open http://<this-machine>:${PORT}/configure to set it up.`);

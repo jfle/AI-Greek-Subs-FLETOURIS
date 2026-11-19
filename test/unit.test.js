@@ -15,13 +15,13 @@ test.after(() => fs.rmSync(process.env.DATA_DIR, { recursive: true, force: true 
 
 test('config: defaults and normalisation', () => {
   const c = normalizeConfig({ provider: 'nope', targetLang: 'xx', concurrency: '99', batchSize: '2', sources: 'stremio://example.com/manifest.json' });
-  assert.equal(c.provider, 'openai');
+  assert.equal(c.provider, 'native');
   assert.equal(c.targetLang, 'ell');
   assert.equal(c.concurrency, 32);
   assert.equal(c.batchSize, 5);
   assert.deepEqual(c.sources, ['https://example.com']);
   assert.equal(c.autoTranslate, true);
-  assert.equal(c.earlyStart, true);
+  assert.equal(c.earlyStart, false);
 });
 
 test('config: encrypted token round-trip, tamper detection, defaults not stored', () => {

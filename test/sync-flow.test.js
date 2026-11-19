@@ -18,7 +18,7 @@ const payloadOf = (url) => {
 test.before(async () => {
   mock = await startMockProviders({ lines: 300 });
   addon = await startAddon(mock.base);
-  const r = await api(addon.base, 'encode', { config: { provider: 'custom', baseUrl: `${mock.base}/v1`, model: 'm', sources: [mock.base] } });
+  const r = await api(addon.base, 'encode', { config: { provider: 'custom', baseUrl: `${mock.base}/v1`, model: 'm', earlyStart: true, sources: [mock.base] } });
   token = r.body.token;
 });
 test.after(async () => {

@@ -1,32 +1,23 @@
-<p align="center"><img src="docs/images/hellascue-launch.png" alt="HellasCue AI. Take back the subtitle menu." width="1200"></p>
+<p align="center"><img src="docs/images/polycue-launch.png" alt="PolyCue AI. One addon. Your language." width="1200"></p>
 
-# HellasCue AI
+# PolyCue AI
 
-**Bad Greek subtitles? Switch tracks. Missing Greek subtitles? Generate them.**
+**Stop juggling subtitle addons. Pick your language once.**
 
-HellasCue AI is a standalone Stremio addon that turns English subtitle files into Greek tracks you can pick from the subtitle menu. It checks the source against the release, looks for timing problems and gives you an AI backup when the existing Greek track lets you down.
+PolyCue AI gives Stremio a single subtitle addon with **OpenSubtitles v3 built in** and AI translation ready when the supplied track is missing or out of sync. Choose French, Greek, Spanish, Japanese, or another language during setup.
 
-[**Install HellasCue AI →**](INSTALL.md) · [**Get the installer build →**](https://github.com/jfle/aio-streams-subtitles-greek/actions/workflows/ci.yml?query=branch%3Ahellascue-ai)
+[**Install PolyCue AI →**](INSTALL.md) · [**Get the installer build →**](https://github.com/jfle/aio-streams-subtitles-greek/actions/workflows/ci.yml?query=branch%3Apolycue-ai)
 
-## Take control of what you watch
+## One install. Three ways to get the track.
 
-- **Keep the Greek tracks you already have.** When a higher-priority provider offers Greek, HellasCue puts an AI backup within reach. Translation begins when the player loads that track.
-- **Start with the right English file.** Release and file-hash matching help identify the right source. Timing analysis can correct supported frame-rate and offset issues.
-- **Choose your own AI.** Use local Llama-Krikri where available, with an optional cloud API provider when local inference is unavailable. Successful local requests use no cloud quota.
-- **Keep finished translations ready.** The server caches completed subtitle files so rewatches can skip generation.
+1. **OpenSubtitles v3 first.** PolyCue lists the available tracks in your selected language. A separate OpenSubtitles addon is optional.
+2. **Local Krikri next.** If you configure Llama-Krikri-8B-Instruct, PolyCue tries it first for AI translation, with thinking off. Local inference uses no cloud quota.
+3. **Cloud when needed.** Set a cloud API provider to take over when the local model is unavailable or fails. If OpenSubtitles has a track, the AI backup waits until your player loads it.
 
-<p align="center"><img src="docs/images/hellascue-backup.png" alt="Illustration showing OpenSubtitles and the HellasCue AI on-demand backup in the Greek subtitle choices." width="960"></p>
+<p align="center"><img src="docs/images/polycue-order.png" alt="OpenSubtitles v3 first, then local Krikri AI, then optional cloud AI." width="960"></p>
 
-## Quick start
+**Built for real releases.** PolyCue checks the English source against the video release, can correct supported timing issues, and caches finished translations for rewatching.
 
-1. Start the [standalone service](INSTALL.md) on Linux or run it with Docker Compose.
-2. Open the printed **/configure** page. Choose a local model or a cloud API provider and test it.
-3. Generate a private install link and open it in Stremio. When you watch, look for the AI choice under **Greek**.
+**Start with OpenSubtitles alone.** It needs no AI account. Translation requires a usable English subtitle file, and language coverage and quality depend on the source and model. Krikri is tuned for Greek. For other languages, compare the test translation with your chosen cloud model.
 
-An English subtitle file from a configured source is required. AI translation quality and timing depend on that source and your model. Greek is the default and other target languages are available.
-
-### Self-hosting and usage costs
-
-This build is distributed under the [MIT License](LICENSE). You provide the host and choose the model. Your cloud provider may charge for usage. The self-hosted build has no checkout or paid plan.
-
-HellasCue AI is an independent addon for Stremio. AIOStreams deployment is available separately on the [AIOStreams standalone branch](https://github.com/jfle/aio-streams-subtitles-greek/tree/aiostreams-standalone).
+PolyCue AI is an independent, MIT-licensed Stremio addon. Cloud providers may charge for usage. The [AIOStreams standalone install](https://github.com/jfle/aio-streams-subtitles-greek/tree/aiostreams-standalone) lives on its own branch.
