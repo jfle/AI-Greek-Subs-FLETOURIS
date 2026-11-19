@@ -91,7 +91,11 @@
       <label for="localBaseUrl">Local model API URL (optional)</label>
       <input id="localBaseUrl" placeholder="http://gpu-pc.lan:1234/v1">
       <label for="localModel">Local model ID (optional override)</label>
-      <input id="localModel" placeholder="Model ID from your local server">
+      <div class="row">
+        <input id="localModel" placeholder="Model ID from your local server">
+        <button type="button" class="btn" id="checkLocalModel">Check model</button>
+      </div>
+      <div class="msg" id="localModelStatus" role="status" aria-live="polite"></div>
       <div class="hint" id="localModelHint">
         <a href="https://huggingface.co/ilsp/Llama-Krikri-8B-Instruct-GGUF/resolve/main/llama-krikri-8b-instruct-q4_k_m.gguf?download=true" target="_blank" rel="noopener noreferrer">Download Krikri Q4_K_M for Greek</a>
         · <a href="https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF" target="_blank" rel="noopener noreferrer">Download Qwen2.5-7B-Instruct for more languages</a>.
@@ -154,7 +158,9 @@
         <select id="modelSelect" style="display:none"></select>
         <input type="text" id="model" placeholder="model id">
         <button type="button" class="btn" id="loadModels">Load models</button>
+        <button type="button" class="btn" id="checkPrimaryModel" hidden>Check model</button>
       </div>
+      <div class="msg" id="primaryModelStatus" role="status" aria-live="polite"></div>
       <div class="hint">Pick a model from the list, or click <b>Load models</b> to fetch every model your account can use. Check your provider’s pricing and usage limits.</div>
 
       </div>
@@ -304,7 +310,11 @@
     const p = B.providers[$('provider').value];
     const showProvider = $('provider').value !== 'native';
     $('modelWrap').style.display = showProvider ? '' : 'none';
-    $('localModelWrap').style.display = $('provider').value === 'custom' ? 'none' : '';
+    const custom = $('provider').value === 'custom';
+    $('localModelWrap').style.display = custom ? 'none' : '';
+    $('checkPrimaryModel').hidden = !custom;
+    $('primaryModelStatus').className = 'msg';
+    $('localModelStatus').className = 'msg';
     const defaultModel = $('provider').value === 'custom' ? suggestedLocalModel() : p.defaultModel;
     if (!initial || !$('model').value) $('model').value = defaultModel;
     fillModels(p.models);
@@ -418,6 +428,32 @@
       if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
       return j;
     } finally { btn.disabled = false; }
+  }
+
+  for (const [buttonId, statusId, fields] of [
+    ['checkLocalModel', 'localModelStatus', ['localModel', 'localBaseUrl', 'targetLang', 'provider', 'password']],
+    ['checkPrimaryModel', 'primaryModelStatus', ['model', 'modelSelect', 'baseUrl', 'targetLang', 'provider', 'password', 'apiKey']],
+  ]) {
+    const output = $(statusId);
+    const current = () => JSON.stringify(fields.map((id) => $(id).value));
+    for (const field of fields) {
+      $(field).addEventListener('input', () => { output.textContent = ''; output.className = 'msg'; });
+    }
+    $(buttonId).addEventListener('click', async () => {
+      const checked = current();
+      output.textContent = 'Checking the local model list…';
+      output.className = 'hint';
+      try {
+        const result = await api('check-local-model', $(buttonId));
+        if (checked !== current()) return;
+        output.textContent = `✓ Local server is reachable and lists “${result.model}”.`;
+        output.className = 'msg ok';
+      } catch (error) {
+        if (checked !== current()) return;
+        output.textContent = error.message;
+        output.className = 'msg err';
+      }
+    });
   }
 
   async function loadModels(autoPick) {

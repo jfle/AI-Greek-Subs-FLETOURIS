@@ -106,6 +106,23 @@ test('test translation and model listing through the API', async () => {
   assert.ok(m.body.models.includes('gpt-6-luna'));
 });
 
+test('local model check verifies the exact advertised ID without generating a translation', async () => {
+  const model = 'my-local-model';
+  mock.state.localModel = model;
+  try {
+    const calls = mock.state.chatCalls;
+    const config = { provider: 'native', localBaseUrl: `${mock.base}/v1`, localModel: model };
+    assert.deepEqual(await api(addon.base, 'check-local-model', { config }), { status: 200, body: { model } });
+    assert.equal((await api(addon.base, 'check-local-model', { config: { ...config, localModel: model.toUpperCase() } })).status, 404);
+    assert.equal((await api(addon.base, 'check-local-model', { config: { ...config, localBaseUrl: 'http://127.0.0.1:1/v1' } })).status, 502);
+    assert.equal((await api(addon.base, 'check-local-model', { config: { ...config, localBaseUrl: '' } })).status, 400);
+    assert.equal((await api(addon.base, 'check-local-model', { config: { provider: 'custom', baseUrl: config.localBaseUrl, model } })).status, 200);
+    assert.equal(mock.state.chatCalls, calls);
+  } finally {
+    mock.state.localModel = false;
+  }
+});
+
 test('CONFIG_PASSWORD protects the configuration API', async () => {
   const locked = await startAddon(mock.base, { CONFIG_PASSWORD: 'pw123' });
   try {

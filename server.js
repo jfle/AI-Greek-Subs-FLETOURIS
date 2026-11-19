@@ -4,7 +4,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { PROVIDERS, LANGUAGES, listModels } = require('./src/providers');
+const { PROVIDERS, LANGUAGES, listModels, localModelAvailable } = require('./src/providers');
 const { DEFAULTS, LOCAL_MODELS, localModelFor, canTranslate, normalizeConfig, encodeConfig, decodeConfig, sign, b64url } = require('./src/config');
 const { getOrStartJob, renderJob, translateLines, status, openingReady, etaMs } = require('./src/translator');
 const { selectSubtitles } = require('./src/select');
@@ -333,6 +333,29 @@ async function handleApi(req, res, action) {
       if (cfg.provider === 'native') return send(res, 200, { models: cfg.localBaseUrl ? [localModelFor(cfg)] : [] });
       return send(res, 200, { models: await listModels(cfg) });
     }
+    if (action === 'check-local-model') {
+      const cfg = normalizeConfig(body.config || {});
+      const local = cfg.provider === 'custom' ? cfg : {
+        provider: 'custom',
+        baseUrl: cfg.localBaseUrl,
+        model: localModelFor(cfg),
+        apiKey: '',
+      };
+      if (!local.baseUrl) throw new Error('Enter the local model API URL first');
+      let available;
+      try {
+        available = await localModelAvailable(local);
+      } catch (error) {
+        if (error.status === 401 || error.status === 403) {
+          return send(res, 502, { error: 'The local server rejected access. Check its API key or authentication settings.' });
+        }
+        return send(res, 502, { error: 'Could not read the local model list. Check that the server is running, the URL ends in /v1, and PolyCue can reach it.' });
+      }
+      if (!available) {
+        return send(res, 404, { error: `The local server is reachable, but it did not list “${local.model}”. Check the exact model ID or load the model.` });
+      }
+      return send(res, 200, { model: local.model });
+    }
     if (action === 'test') {
       const cfg = normalizeConfig(body.config || {});
       if (!canTranslate(cfg)) throw new Error('Set a local model endpoint or choose a cloud provider and a non-English target language first');
@@ -376,7 +399,7 @@ const server = http.createServer(async (req, res) => {
     const { pathname } = new URL(req.url, 'http://x');
     let m;
 
-    if (req.method === 'POST' && (m = pathname.match(/^\/api\/(encode|models|test|credential|oauth\/openrouter\/start|oauth\/chatgpt\/start|oauth\/chatgpt\/finish|oauth\/xai\/start|oauth\/xai\/poll)$/))) {
+    if (req.method === 'POST' && (m = pathname.match(/^\/api\/(encode|models|check-local-model|test|credential|oauth\/openrouter\/start|oauth\/chatgpt\/start|oauth\/chatgpt\/finish|oauth\/xai\/start|oauth\/xai\/poll)$/))) {
       return handleApi(req, res, m[1]);
     }
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Method not allowed' });
