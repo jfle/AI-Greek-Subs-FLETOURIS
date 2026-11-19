@@ -29,6 +29,8 @@ const DEFAULTS = {
   baseUrl: '',
   targetLang: 'ell',
   sources: ['https://opensubtitles-v3.strem.io'],
+  prioritySources: sourceList(process.env.PRIORITY_SUBTITLE_SOURCES),
+  localBaseUrl: endpoint(process.env.LOCAL_LLM_URL),
   maxCandidates: 1,
   autoTranslate: true,
   batchSize: 0, // 0 = automatic (see effectiveLimits)
@@ -58,6 +60,16 @@ function normalizeSourceUrl(u) {
     .replace(/\/+$/, '');
 }
 
+function sourceList(value) {
+  const list = Array.isArray(value) ? value : String(value || '').split(/[\n,]+/);
+  return [...new Set(list.map(normalizeSourceUrl).filter((s) => /^https?:\/\//i.test(s)))];
+}
+
+function endpoint(value) {
+  const url = String(value || '').trim().replace(/\/+$/, '');
+  return /^https?:\/\//i.test(url) ? url : '';
+}
+
 function normalizeConfig(input = {}) {
   const c = { ...DEFAULTS, ...input };
   if (!PROVIDERS[c.provider]) c.provider = DEFAULTS.provider;
@@ -65,6 +77,13 @@ function normalizeConfig(input = {}) {
   c.apiKey = String(c.apiKey || '').trim();
   c.model = String(c.model || '').trim() || p.defaultModel;
   c.baseUrl = String(c.baseUrl || '').trim().replace(/\/+$/, '') || p.baseUrl;
+  if (c.provider === 'custom' && DEFAULTS.localBaseUrl) {
+    c.baseUrl = DEFAULTS.localBaseUrl;
+    c.model = p.defaultModel;
+    c.apiKey = '';
+  }
+  c.localBaseUrl = endpoint(c.localBaseUrl);
+  c.prioritySources = sourceList(c.prioritySources);
   if (!LANGUAGES[c.targetLang]) c.targetLang = DEFAULTS.targetLang;
   let sources = Array.isArray(c.sources) ? c.sources : String(c.sources || '').split(/[\n,]+/);
   sources = sources.map(normalizeSourceUrl).filter((s) => /^https?:\/\//i.test(s));
@@ -77,7 +96,7 @@ function normalizeConfig(input = {}) {
   c.autoTranslate = c.autoTranslate === true || c.autoTranslate === 'true' || c.autoTranslate === 'on';
   c.showOriginalWhilePending =
     c.showOriginalWhilePending === true || c.showOriginalWhilePending === 'true' || c.showOriginalWhilePending === 'on';
-  c.disableThinking = c.disableThinking === true || c.disableThinking === 'true' || c.disableThinking === 'on';
+  c.disableThinking = true;
   c.prefetchNext = c.prefetchNext === true || c.prefetchNext === 'true' || c.prefetchNext === 'on';
   c.earlyStart = c.earlyStart === true || c.earlyStart === 'true' || c.earlyStart === 'on';
   c.autoSync = c.autoSync === true || c.autoSync === 'true' || c.autoSync === 'on';

@@ -90,7 +90,7 @@ const PROVIDERS = {
     label: 'Custom OpenAI-compatible (Ollama, LM Studio, vLLM…)',
     type: 'openai',
     baseUrl: 'http://localhost:11434/v1',
-    defaultModel: 'llama3.1',
+    defaultModel: 'llama-krikri-8b-instruct',
     models: [],
     keyUrl: '',
   },
@@ -139,13 +139,13 @@ async function requestJson(url, opts = {}, attempt = 0) {
   try {
     res = await fetch(url, { ...opts, signal: AbortSignal.timeout(opts.timeout || 180000) });
   } catch (e) {
-    if (attempt < 3) {
+    if (opts.retry !== false && attempt < 3) {
       await sleep(1500 * 2 ** attempt);
       return requestJson(url, opts, attempt + 1);
     }
     throw new Error(`Network error contacting ${new URL(url).host}: ${e.message}`);
   }
-  if ((res.status === 429 || res.status >= 500) && attempt < 5) {
+  if ((res.status === 429 || res.status >= 500) && opts.retry !== false && attempt < 5) {
     const retryAfter = parseFloat(res.headers.get('retry-after')) || 0;
     await res.text().catch(() => {});
     await sleep(Math.min(60000, Math.max(retryAfter * 1000, 2000 * 2 ** attempt)));
@@ -193,7 +193,7 @@ async function chatOpenAI(cfg, system, user, opts = {}) {
   };
   const local = cfg.provider === 'custom';
   // LM Studio (and other local servers) skip a model's "thinking" phase when asked for reasoning effort "none".
-  if (local && cfg.disableThinking) body.reasoning_effort = 'none';
+  if (local) body.reasoning_effort = 'none';
   // Structured output: the server's grammar forces valid JSON with exactly one string per subtitle key.
   if (local && opts.keys?.length) {
     body.response_format = {
@@ -218,7 +218,8 @@ async function chatOpenAI(cfg, system, user, opts = {}) {
         headers: openaiHeaders(cfg),
         body: JSON.stringify(body),
         // Local servers may need to load the model into memory on the first request.
-        timeout: local ? 600000 : 180000,
+        timeout: cfg.localAttempt ? 30000 : local ? 600000 : 180000,
+        retry: !cfg.localAttempt,
       });
       let content = j.choices?.[0]?.message?.content;
       if (Array.isArray(content)) content = content.map((p) => p.text || '').join('');
@@ -507,4 +508,11 @@ async function listModels(cfg) {
   return (j.data || j.models || []).map((m) => m.id || m.name).filter(Boolean).sort();
 }
 
-module.exports = { PROVIDERS, LANGUAGES, chat, listModels };
+async function localModelAvailable(cfg) {
+  const models = await requestJson(`${cfg.baseUrl}/models`, {
+    headers: openaiHeaders(cfg), timeout: 1500, retry: false,
+  });
+  return (models.data || models.models || []).some((model) => (model.id || model.name) === cfg.model);
+}
+
+module.exports = { PROVIDERS, LANGUAGES, chat, listModels, localModelAvailable };

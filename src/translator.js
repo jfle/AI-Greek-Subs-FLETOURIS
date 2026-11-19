@@ -5,7 +5,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { chat, LANGUAGES } = require('./providers');
+const { chat, LANGUAGES, PROVIDERS, localModelAvailable } = require('./providers');
 const { toSrt } = require('./subtitles');
 const { downloadCues } = require('./sync');
 const { DATA_DIR, effectiveLimits } = require('./config');
@@ -76,8 +76,34 @@ function parseModelJson(text) {
 
 async function translateLines(lines, context, cfg) {
   const payload = { context, lines };
-  const reply = await chat(cfg, systemPrompt(cfg), JSON.stringify(payload), { keys: Object.keys(lines) });
-  return parseModelJson(reply);
+  const keys = Object.keys(lines);
+  const translate = async (provider) => parseModelJson(
+    await chat(provider, systemPrompt(cfg), JSON.stringify(payload), { keys }),
+  );
+  if (cfg.provider !== 'custom' && cfg.localBaseUrl) {
+    const local = {
+      ...cfg,
+      provider: 'custom',
+      model: PROVIDERS.custom.defaultModel,
+      baseUrl: cfg.localBaseUrl,
+      apiKey: '',
+      credId: '',
+      localAttempt: true,
+    };
+    const poolKey = `local-first:${local.baseUrl}`;
+    await acquireSlot(poolKey, 2, () => 0);
+    try {
+      if (await localModelAvailable(local)) {
+        const result = await translate(local);
+        if (keys.every((key) => typeof result?.[key] === 'string' && result[key].trim())) return result;
+      }
+    } catch {
+      // Continue with the configured cloud provider when the local attempt fails.
+    } finally {
+      releaseSlot(poolKey);
+    }
+  }
+  return translate(cfg);
 }
 
 // Priority semaphore per provider endpoint: at most `limit` requests in flight across all jobs;

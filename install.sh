@@ -261,6 +261,14 @@ if [[ $AIOSTREAMS -eq 1 ]]; then
   fi
 fi
 
+# Save these before the environment file is overwritten, including during name migration.
+LOCAL_LLM_URL=""
+PRIORITY_SUBTITLE_SOURCES=""
+if [[ -r "$ENV_SRC" ]]; then
+  LOCAL_LLM_URL=$(sed -n 's/^LOCAL_LLM_URL=//p' "$ENV_SRC" | tail -1)
+  PRIORITY_SUBTITLE_SOURCES=$(sed -n 's/^PRIORITY_SUBTITLE_SOURCES=//p' "$ENV_SRC" | tail -1)
+fi
+
 # Remember the choices for the next update; keep secrets out of the world-readable unit file.
 umask 077
 {
@@ -273,6 +281,8 @@ umask 077
   if [[ -n "$EXTERNAL_URL" ]]; then echo "EXTERNAL_URL=$EXTERNAL_URL"; fi
   if [[ -n "$CONFIG_PASSWORD" ]]; then echo "CONFIG_PASSWORD=$CONFIG_PASSWORD"; fi
   if [[ -n "$AIO_URL" ]]; then echo "AIOSTREAMS_URL=$AIO_URL"; fi
+  if [[ -n "$LOCAL_LLM_URL" ]]; then printf 'LOCAL_LLM_URL=%s\n' "$LOCAL_LLM_URL"; fi
+  if [[ -n "$PRIORITY_SUBTITLE_SOURCES" ]]; then printf 'PRIORITY_SUBTITLE_SOURCES=%s\n' "$PRIORITY_SUBTITLE_SOURCES"; fi
 } > "$ENVFILE"
 chmod 600 "$CONF" "$ENVFILE"
 umask 022

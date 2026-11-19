@@ -5,7 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { PROVIDERS, LANGUAGES, listModels } = require('./src/providers');
-const { normalizeConfig, encodeConfig, decodeConfig, sign, b64url } = require('./src/config');
+const { DEFAULTS, normalizeConfig, encodeConfig, decodeConfig, sign, b64url } = require('./src/config');
 const { getOrStartJob, renderJob, translateLines, status, openingReady, etaMs } = require('./src/translator');
 const { selectSubtitles } = require('./src/select');
 const { alignmentFor, isNoop, retimeCues, describeFix } = require('./src/sync');
@@ -42,15 +42,15 @@ function manifest(cfg, base) {
   return {
     id: 'community.ai-greek-subs-fletouris',
     version: pkg.version,
-    name: 'AIO-Streams&Subtitles-Greek',
-    logo: `${base}/logo.png`,
+    name: 'AI-Fletouris',
+    logo: `${base}/logo.png?v=${pkg.version}`,
     background: `${base}/background.png`,
     description:
       `Translates English subtitles to ${lang} with AI` +
       (cfg ? ` (${PROVIDERS[cfg.provider].label} · ${cfg.model}).` : '. Configure your AI provider to start.'),
     // The (always empty) stream resource only tells the addon which title was opened, so translation
     // can start while the viewer is still picking a stream.
-    resources: cfg && cfg.autoTranslate && cfg.earlyStart
+    resources: cfg && cfg.autoTranslate && cfg.earlyStart && !cfg.prioritySources.length
       ? ['subtitles', { name: 'stream', types: ['movie', 'series'], idPrefixes: ['tt', 'kitsu'] }]
       : ['subtitles'],
     types: ['movie', 'series'],
@@ -103,6 +103,7 @@ function readBody(req) {
 function renderPage(cfg) {
   const data = {
     config: cfg,
+    defaults: DEFAULTS,
     providers: Object.fromEntries(
       Object.entries(PROVIDERS).map(([k, p]) => [k, { label: p.label, baseUrl: p.baseUrl, defaultModel: p.defaultModel, models: p.models, keyUrl: p.keyUrl, auth: p.auth || null }]),
     ),
@@ -122,7 +123,7 @@ const earlyStarted = new Map();
 async function handleStream(req, res, token, type, id) {
   send(res, 200, { streams: [] }, undefined, { 'Cache-Control': 'no-store' });
   const cfg = decodeConfig(token);
-  if (!cfg || !cfg.autoTranslate || !cfg.earlyStart) return;
+  if (!cfg || !cfg.autoTranslate || !cfg.earlyStart || cfg.prioritySources.length) return;
   id = decodeURIComponent(id);
   if (type === 'series' && !/:\d+:\d+$/.test(id)) return;
   const key = `${type}|${id}|${cfg.provider}|${cfg.model}|${cfg.targetLang}`;
@@ -178,7 +179,7 @@ async function handleSubtitles(req, res, token, type, id, extra) {
   console.log(`[subs] ${type} ${decodeURIComponent(id)}: ${tracks.length} track(s)${d.chosen ? ` · ${d.chosen} (${d.why})` : ''}${d.reuse ? ` · reusing ${d.reuse.from} (${d.reuse.fix})` : ''}`);
   send(res, 200, { subtitles, cacheMaxAge: 60 }, undefined, { 'Cache-Control': 'max-age=60' });
   // Start the next episode only after this one is translated, so it never takes LM Studio slots from it.
-  if (cfg.prefetchNext && type === 'series') {
+  if (cfg.prefetchNext && !cfg.prioritySources.length && type === 'series') {
     Promise.resolve(current && current.promise).then(() => prefetchNextEpisode(cfg, decodeURIComponent(id)));
   }
 }

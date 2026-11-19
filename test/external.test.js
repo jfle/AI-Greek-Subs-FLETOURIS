@@ -38,7 +38,8 @@ test('install links for home and anywhere; page shows the choice', async () => {
     assert.match(page, /"external":"https:\/\/203-0-113-5\.local-ip\.sh:8443"/);
     // Arriving through the external address: links, manifest and the configure page use that address.
     const m = (await call(addon.base, `/${r.token}/manifest.json`, { host: '203-0-113-5.local-ip.sh:8443' })).json();
-    assert.equal(m.logo, `${EXT}/logo.png`);
+    assert.equal(new URL(m.logo).pathname, '/logo.png');
+    assert.equal(new URL(m.logo).origin, EXT);
     assert.equal((await call(addon.base, '/configure', { host: '203-0-113-5.local-ip.sh:8443' })).status, 200, 'no redirect away from the external address');
     assert.equal((await call(addon.base, '/configure', { host: 'unknown.example:1' })).status, 302);
   } finally { await addon.stop(); }
@@ -75,7 +76,8 @@ test('the external address is recognised without its port (other forwarded port 
   try {
     const r = (await call(addon.base, '/api/encode', { body: { config: { provider: 'custom', baseUrl: `${mock.base}/v1`, model: 'm' }, password: 'pw' } })).json();
     const m = (await call(addon.base, `/${r.token}/manifest.json`, { host: '203-0-113-5.local-ip.sh' })).json();
-    assert.equal(m.logo, `${EXT}/logo.png`);
+    assert.equal(new URL(m.logo).pathname, '/logo.png');
+    assert.equal(new URL(m.logo).origin, EXT);
   } finally { await addon.stop(); }
 });
 

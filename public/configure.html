@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AIO-Streams&amp;Subtitles-Greek — Configure</title>
-<link rel="icon" type="image/png" href="/logo.png">
+<title>AI-Fletouris — Configure</title>
+<link rel="icon" type="image/png" href="/logo.png?v=2.0.1">
 <style>
   /* Greek flag theme: Greek blue #0D5EAF and white, nine stripes and the cross */
   :root {
@@ -79,9 +79,9 @@
 <div class="hero">
   <div class="cross"></div>
   <div class="hero-in">
-    <img src="/logo.png" alt="">
+    <img src="/logo.png?v=2.0.1" alt="">
     <div>
-      <h1>AIO-Streams&amp;Subtitles-Greek</h1>
+      <h1>AI-Fletouris</h1>
       <p>Ελληνικοί υπότιτλοι με AI για το Stremio · AI Greek subtitles for Stremio</p>
     </div>
   </div>
@@ -156,7 +156,6 @@
         <input type="text" id="baseUrl">
         <div class="hint">Only change this for a proxy or self-hosted endpoint (LM Studio: <code>http://&lt;PC-IP&gt;:1234/v1</code>, Ollama: <code>http://&lt;PC-IP&gt;:11434/v1</code>). Use the PC's network address, not <code>localhost</code>.</div>
       </div>
-      <label class="check" id="thinkWrap"><input type="checkbox" id="disableThinking"> <span>Turn off model "thinking" (reasoning)<div class="hint">Asks LM Studio / local servers to skip the reasoning phase of thinking models (Qwen 3.x, gpt-oss…). Much faster, same translation quality. The model loads automatically on the first request — the first test can take a minute.</div></span></label>
     </section>
 
     <section>
@@ -181,6 +180,12 @@
         <label for="sources" style="margin-top:14px">English subtitle sources (Stremio subtitle addon URLs, one per line)</label>
         <textarea id="sources"></textarea>
         <div class="hint">Defaults to OpenSubtitles v3. You can add any Stremio subtitle addon's manifest URL.</div>
+
+        <label for="prioritySources">Subtitle addons above AI-Fletouris (one manifest URL per line)</label>
+        <textarea id="prioritySources"></textarea>
+        <div class="hint">If an addon in this list offers the selected language, AI-Fletouris skips translation. Early start and next-episode prefetch pause while this list is in use.</div>
+        <label for="localBaseUrl">Local Krikri API URL (checked before your cloud provider)</label>
+        <input id="localBaseUrl" placeholder="http://gpu-pc.lan:1234/v1">
 
         <div class="grid3" style="margin-top:14px">
           <div><label for="maxCandidates">Greek AI tracks (1 recommended)</label><input type="number" id="maxCandidates" min="1" max="10"></div>
@@ -238,6 +243,7 @@
     autoTranslate: true, batchSize: 0, concurrency: 0, earlyStart: true, autoSync: true, syncNotes: true, temperature: 0.3, showOriginalWhilePending: true, disableThinking: true,
     prefetchNext: true, instructions: '', credId: ''
   };
+  Object.assign(defaults, B.defaults);
   let c = Object.assign({}, defaults, cfg);
   let credId = c.credId || '';
   let credential = B.credential || null;
@@ -300,7 +306,6 @@
     $('model').placeholder = p.defaultModel;
     $('keyHint').innerHTML = p.keyUrl ? `Get a key at <a href="${p.keyUrl}" target="_blank" rel="noopener">${new URL(p.keyUrl).host}</a>. It is stored encrypted inside your addon URL — not on this page.` : 'Leave empty if your endpoint needs no key.';
     $('baseUrlWrap').style.display = p.auth === 'chatgpt' ? 'none' : '';
-    $('thinkWrap').style.display = $('provider').value === 'custom' ? '' : 'none';
     const alt = ALT_SIGNIN[$('provider').value];
     $('authBox').style.display = p.auth || alt ? '' : 'none';
     $('orAuth').style.display = p.auth === 'openrouter' ? '' : 'none';
@@ -344,7 +349,8 @@
   $('autoSync').checked = c.autoSync !== false;
   $('syncNotes').checked = c.syncNotes !== false;
   $('gptRedirect').textContent = B.chatgptRedirect;
-  $('disableThinking').checked = c.disableThinking !== false;
+  $('prioritySources').value = (c.prioritySources || []).join('\n');
+  $('localBaseUrl').value = c.localBaseUrl || '';
   $('sources').value = (c.sources || []).join('\n');
   $('maxCandidates').value = c.maxCandidates;
   $('batchSize').value = c.batchSize || '';
@@ -353,7 +359,7 @@
   onProvider(true);
   $('provider').addEventListener('change', () => onProvider(false));
   if (B.passwordRequired) $('pwSection').style.display = '';
-  $('footer').innerHTML = `<span class="mini"></span>AIO-Streams&amp;Subtitles-Greek v${B.version}`;
+  $('footer').innerHTML = `<span class="mini"></span>AI-Fletouris v${B.version}`;
 
   function collect() {
     return {
@@ -370,7 +376,8 @@
       autoSync: $('autoSync').checked,
       syncNotes: $('syncNotes').checked,
       credId,
-      disableThinking: $('disableThinking').checked,
+      prioritySources: $('prioritySources').value,
+      localBaseUrl: $('localBaseUrl').value.trim(),
       sources: $('sources').value.split(/\n+/).map((s) => s.trim()).filter(Boolean),
       maxCandidates: +$('maxCandidates').value,
       batchSize: +$('batchSize').value || 0,

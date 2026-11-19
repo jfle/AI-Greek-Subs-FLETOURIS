@@ -45,6 +45,9 @@ function startMockProviders({ lines = 120, llmDelayMs = 30 } = {}) {
   const state = {
     requests: [],
     chatCalls: 0,
+    chatBodies: [],
+    rejectChat: false,
+    localModel: false,
     xaiPolls: 0,
     listings: {},
     runtimeMin: null,
@@ -82,6 +85,8 @@ function startMockProviders({ lines = 120, llmDelayMs = 30 } = {}) {
       if (p === '/v1/chat/completions') {
         state.chatCalls++;
         const j = JSON.parse(body);
+        state.chatBodies.push(j);
+        if (state.rejectChat) return json(503, { error: 'offline' });
         const payload = JSON.parse(j.messages[j.messages.length - 1].content);
         return setTimeout(() => json(200, { choices: [{ message: { content: JSON.stringify(greek(payload.lines, 'ΕΛ')) } }] }), llmDelayMs);
       }
@@ -119,6 +124,9 @@ function startMockProviders({ lines = 120, llmDelayMs = 30 } = {}) {
           state.refreshCount++;
           return json(200, { access_token: `at-${state.refreshCount + 1}`, refresh_token: `rt-${state.refreshCount + 1}`, expires_in: 3600 });
         }
+      }
+      if (p === '/v1/models' && state.localModel) {
+        return json(200, { data: [{ id: 'llama-krikri-8b-instruct' }] });
       }
       if (p === '/v1/models') return json(200, { data: [{ id: 'gpt-6-luna', visibility: 'list' }, { id: 'gpt-6-sol', visibility: 'list' }, { id: 'internal-x', visibility: 'hidden' }] });
       if (p === '/v1/responses') {

@@ -50,7 +50,7 @@ test('configured manifest advertises subtitles and the early-start stream resour
   assert.equal(m.body.resources[0], 'subtitles');
   assert.equal(m.body.resources[1].name, 'stream');
   assert.match(m.body.description, /local-model/);
-  assert.match(m.body.logo, /\/logo\.png$/);
+  assert.match(m.body.logo, /\/logo\.png\?v=/);
   const page = await (await fetch(`${addon.base}/${token}/configure`)).text();
   assert.match(page, /"model":"local-model"/);
 });
@@ -113,5 +113,48 @@ test('CONFIG_PASSWORD protects the configuration API', async () => {
     assert.equal((await api(locked.base, 'encode', { config: cfg, password: 'pw123' })).status, 200);
   } finally {
     await locked.stop();
+  }
+});
+
+test('a higher-priority Greek track prevents both AI tracks and translation jobs', async () => {
+  const id = 'tt0000101';
+  mock.state.listings[id] = [{ file: '-english' }, { file: '-greek', lang: 'el-GR' }];
+  const { body } = await api(addon.base, 'encode', { config: {
+    provider: 'custom', baseUrl: `${mock.base}/v1`, sources: [mock.base], prioritySources: [mock.base],
+  }});
+  const configured = `${addon.base}/${body.token}`;
+  assert.deepEqual((await getJson(`${configured}/manifest.json`)).body.resources, ['subtitles']);
+  const calls = mock.state.chatCalls;
+  await getJson(`${configured}/stream/movie/${id}.json`);
+  assert.deepEqual((await getJson(`${configured}/subtitles/movie/${id}.json`)).body.subtitles, []);
+  assert.equal(mock.state.chatCalls, calls);
+  mock.state.listings[id] = [{ file: '-english' }];
+  assert.equal((await getJson(`${configured}/subtitles/movie/${id}.json`)).body.subtitles.length, 1);
+});
+
+test('Krikri runs first with thinking off and cloud takes over if it fails', async () => {
+  const local = await startMockProviders();
+  const cloud = await startMockProviders();
+  try {
+    local.state.localModel = true;
+    const config = {
+      provider: 'openai', model: 'cloud-model', apiKey: 'cloud-key',
+      baseUrl: `${cloud.base}/v1`, localBaseUrl: `${local.base}/v1`,
+    };
+    assert.equal((await api(addon.base, 'test', { config })).status, 200);
+    assert.equal(cloud.state.chatCalls, 0);
+    assert.equal(local.state.chatBodies[0].model, 'llama-krikri-8b-instruct');
+    assert.equal(local.state.chatBodies[0].reasoning_effort, 'none');
+    local.state.rejectChat = true;
+    assert.equal((await api(addon.base, 'test', { config })).status, 200);
+    assert.equal(cloud.state.chatCalls, 1);
+    assert.equal(local.state.chatCalls, 2);
+    local.state.localModel = false;
+    assert.equal((await api(addon.base, 'test', { config })).status, 200);
+    assert.equal(cloud.state.chatCalls, 2);
+    assert.equal(local.state.chatCalls, 2);
+  } finally {
+    await local.close();
+    await cloud.close();
   }
 });

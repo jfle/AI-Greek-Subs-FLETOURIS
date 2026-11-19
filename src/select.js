@@ -7,14 +7,20 @@ const {
 } = require('./sync');
 const { translationState } = require('./translator');
 
+function isTargetLanguage(value, target) {
+  const code = String(value || '').trim().toLowerCase().split(/[-_]/)[0];
+  return code === target || (target === 'ell' && ['el', 'gre', 'greek', 'ελληνικά'].includes(code));
+}
+
 const isEnglish = (lang) => ['eng', 'en', 'english', 'en-us', 'en-gb'].includes(String(lang || '').toLowerCase());
 
-async function fetchSourceSubs(cfg, type, id, extra) {
+async function fetchSourceSubs(cfg, type, id, extra, ctx) {
   const suffix = extra ? `/${extra}` : '';
-  const results = await Promise.all(
-    cfg.sources.map(async (base) => {
+  const sources = [...new Set([...cfg.sources, ...cfg.prioritySources])];
+  const responses = await Promise.all(
+    sources.map(async (base) => {
       try {
-        const r = await fetch(`${base}/subtitles/${type}/${id}${suffix}.json`, { signal: AbortSignal.timeout(12000) });
+        const r = await fetch(`${base}/subtitles/${type}/${id}${suffix}.json`, { signal: AbortSignal.timeout(4500) });
         if (!r.ok) return [];
         const j = await r.json();
         return Array.isArray(j.subtitles) ? j.subtitles : [];
@@ -23,6 +29,13 @@ async function fetchSourceSubs(cfg, type, id, extra) {
       }
     }),
   );
+  const hasPreferred = responses.some((list, i) =>
+    cfg.prioritySources.includes(sources[i]) &&
+    list.some((s) => s?.url && isTargetLanguage(s.lang, cfg.targetLang) && !fingerprint(s, ctx).reject),
+  );
+  if (hasPreferred) return { list: [], hasPreferred };
+
+  const results = cfg.sources.map((source) => responses[sources.indexOf(source)]);
   const seen = new Set();
   const out = [];
   // Interleave sources so each configured addon contributes its best match first.
@@ -36,7 +49,7 @@ async function fetchSourceSubs(cfg, type, id, extra) {
       }
     }
   }
-  return out;
+  return { list: out, hasPreferred };
 }
 
 const withBudget = (promise, ms) => Promise.race([promise, new Promise((r) => setTimeout(() => r(undefined), ms))]);
@@ -52,12 +65,12 @@ const fmtMin = (ms) => (ms ? `${Math.round(ms / 60000)} min` : null);
  */
 async function selectSubtitles(cfg, type, id, extra = '', opts = {}) {
   const ctx = matchContext(type, id, extra);
-  const list = await fetchSourceSubs(cfg, type, id, extra);
+  const { list, hasPreferred } = await fetchSourceSubs(cfg, type, id, extra, ctx);
   const report = {
     video: { type, id, filename: ctx.filename || null, hash: Boolean(ctx.videoHash), release: ctx.release ? { group: ctx.release.group, source: ctx.release.source, edition: ctx.release.edition } : null },
     runtime: null,
     candidates: [],
-    decision: null,
+    decision: hasPreferred ? { why: 'higher-priority addon supplied the target language' } : null,
   };
   if (!list.length) return { tracks: [], report };
 
