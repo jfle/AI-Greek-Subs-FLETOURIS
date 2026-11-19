@@ -14,8 +14,19 @@ const auth = require('./src/auth');
 
 const PORT = parseInt(process.env.PORT || '7000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
-const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
+const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, ''); // home-network (LAN) address
+// Address that works from outside the home network (public IP + forwarded port, or a domain).
+const EXTERNAL_URL = (process.env.EXTERNAL_URL || '').replace(/\/+$/, '');
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || '';
+const hostOf = (u) => { try { return new URL(u).host.toLowerCase(); } catch { return ''; } };
+const KNOWN_BASES = [PUBLIC_URL, EXTERNAL_URL].filter(Boolean);
+const bareHost = (h) => String(h || '').toLowerCase().replace(/:\d+$/, '');
+// The configured address a request arrived on: exact host:port first, then the host name alone
+// (a router may forward another external port, or a proxy may drop the port).
+function knownBaseFor(req) {
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase();
+  return KNOWN_BASES.find((b) => hostOf(b) === host) || KNOWN_BASES.find((b) => bareHost(hostOf(b)) === bareHost(host)) || null;
+}
 const SUBTITLE_WAIT_MS = Math.min(9000, parseInt(process.env.SUBTITLE_WAIT_MS || '8500', 10));
 const pkg = require('./package.json');
 const PAGE = fs.readFileSync(path.join(__dirname, 'public', 'configure.html'), 'utf8');
@@ -48,10 +59,12 @@ function manifest(cfg, base) {
 }
 
 function baseUrl(req) {
+  // Answer with the configured address the request came in on (home or external), else the home one.
+  const known = knownBaseFor(req);
+  if (known) return known;
   if (PUBLIC_URL) return PUBLIC_URL;
   const proto = (req.headers['x-forwarded-proto'] || '').split(',')[0] || (req.socket.encrypted ? 'https' : 'http');
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
-  return `${proto}://${host}`;
+  return `${proto}://${req.headers['x-forwarded-host'] || req.headers.host}`;
 }
 
 function send(res, code, body, type = 'application/json; charset=utf-8', extra = {}) {
@@ -95,6 +108,7 @@ function renderPage(cfg) {
     chatgptRedirect: auth.CHATGPT_REDIRECT,
     languages: LANGUAGES,
     passwordRequired: !!CONFIG_PASSWORD,
+    links: { home: PUBLIC_URL || null, external: EXTERNAL_URL || null },
     version: pkg.version,
   };
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
@@ -253,18 +267,46 @@ async function finishTrack(srt, job, cfg, srcUrl, refUrl, quality) {
   return toSrt(cues);
 }
 
-function checkPassword(body) {
-  if (CONFIG_PASSWORD && body.password !== CONFIG_PASSWORD) {
+// Wrong passwords are slowed down and an address is locked out for 15 minutes after 10 failures.
+const pwFails = new Map();
+function clientIp(req) {
+  const peer = String(req.socket.remoteAddress || '');
+  const fromProxy = /^(::ffff:)?127\.|^::1$/.test(peer); // nginx on this machine passes the visitor's IP
+  return fromProxy ? String(req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || peer).split(',')[0].trim() : peer;
+}
+function isExternalRequest(req) {
+  return Boolean(EXTERNAL_URL) && knownBaseFor(req) === EXTERNAL_URL;
+}
+async function checkPassword(body, req) {
+  if (!CONFIG_PASSWORD) {
+    if (isExternalRequest(req)) {
+      const e = new Error('The configuration page can only be used from outside your home network when the server has a password (CONFIG_PASSWORD). Re-run the installer with --public-ip, which sets one, or use the page at home.');
+      e.code = 403;
+      throw e;
+    }
+    return;
+  }
+  const ip = clientIp(req);
+  const f = pwFails.get(ip);
+  if (f && f.count >= 10 && Date.now() - f.at < 15 * 60e3) {
+    const e = new Error('Too many wrong passwords. Try again in 15 minutes.');
+    e.code = 429;
+    throw e;
+  }
+  if (body.password !== CONFIG_PASSWORD) {
+    pwFails.set(ip, { count: (f && Date.now() - f.at < 15 * 60e3 ? f.count : 0) + 1, at: Date.now() });
+    await new Promise((r) => setTimeout(r, 1000));
     const e = new Error('Wrong configuration password');
     e.code = 401;
     throw e;
   }
+  pwFails.delete(ip);
 }
 
 async function handleApi(req, res, action) {
   try {
     const body = await readBody(req);
-    checkPassword(body);
+    await checkPassword(body, req);
     if (action === 'encode') {
       const cfg = normalizeConfig(body.config || {});
       const pa = PROVIDERS[cfg.provider].auth;
@@ -275,8 +317,15 @@ async function handleApi(req, res, action) {
         throw new Error(pa ? 'Sign in or paste an API key first' : 'An API key is required for this provider');
       }
       const token = encodeConfig(cfg);
-      const manifestUrl = `${baseUrl(req)}/${token}/manifest.json`;
-      return send(res, 200, { token, manifestUrl, stremioUrl: manifestUrl.replace(/^https?:\/\//, 'stremio://') });
+      // Install links for each configured address: "home" (LAN) and "external" (works anywhere).
+      const link = (base) => {
+        const manifestUrl = `${base}/${token}/manifest.json`;
+        return { manifestUrl, stremioUrl: manifestUrl.replace(/^https?:\/\//, 'stremio://') };
+      };
+      const links = { home: link(PUBLIC_URL || baseUrl(req)) };
+      if (EXTERNAL_URL) links.external = link(EXTERNAL_URL);
+      const chosen = body.target === 'external' && links.external ? links.external : body.target === 'home' ? links.home : link(baseUrl(req));
+      return send(res, 200, { token, ...chosen, links });
     }
     if (action === 'models') {
       const cfg = normalizeConfig(body.config || {});
@@ -294,8 +343,8 @@ async function handleApi(req, res, action) {
       return send(res, 200, { ok: true, sample: out, ms: Date.now() - started });
     }
     if (action === 'oauth/openrouter/start') {
-      if (!PUBLIC_URL && !/^https:/.test(baseUrl(req))) throw new Error('OpenRouter sign-in needs the HTTPS address (set PUBLIC_URL).');
-      return send(res, 200, { url: auth.openrouterStart(PUBLIC_URL || baseUrl(req), { limit: body.limit }) });
+      if (!KNOWN_BASES.length && !/^https:/.test(baseUrl(req))) throw new Error('OpenRouter sign-in needs the HTTPS address (set PUBLIC_URL).');
+      return send(res, 200, { url: auth.openrouterStart(baseUrl(req), { limit: body.limit }) });
     }
     if (action === 'oauth/chatgpt/start') {
       return send(res, 200, { url: auth.chatgptStart({ credId: body.credId }), redirect: auth.CHATGPT_REDIRECT });
@@ -314,7 +363,7 @@ async function handleApi(req, res, action) {
     }
     send(res, 404, { error: 'Unknown action' });
   } catch (e) {
-    send(res, e.code === 401 ? 401 : 400, { error: e.message });
+    send(res, [401, 403, 429].includes(e.code) ? e.code : 400, { error: e.message });
   }
 }
 
@@ -333,7 +382,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/health') return send(res, 200, { ok: true, version: pkg.version });
     if (pathname === '/status') return send(res, 200, { jobs: status() });
     // Always configure on the public HTTPS address (needed for sign-in callbacks and Stremio installs).
-    if (PUBLIC_URL && /(^|\/)configure$/.test(pathname) && new URL(PUBLIC_URL).host !== req.headers.host) {
+    if (PUBLIC_URL && /(^|\/)configure$/.test(pathname) && !knownBaseFor(req)) {
       return send(res, 302, '', 'text/plain', { Location: `${PUBLIC_URL}${pathname}` });
     }
     if (pathname === '/oauth/openrouter/callback') {
@@ -380,5 +429,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`AI-Greek-Subs-Fletouris v${pkg.version} listening on http://${HOST}:${PORT}`);
+  if (PUBLIC_URL) console.log(`Home network address: ${PUBLIC_URL}`);
+  if (EXTERNAL_URL) console.log(`External address:     ${EXTERNAL_URL}${CONFIG_PASSWORD ? '' : '  (WARNING: no CONFIG_PASSWORD — the configure page is refused from outside)'}`);
   console.log(`Open http://<this-machine>:${PORT}/configure to set it up.`);
 });

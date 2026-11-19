@@ -206,6 +206,10 @@
 
   <section class="install" id="install" style="margin-top:16px">
     <h2>Install</h2>
+    <div id="whereBox" style="display:none; margin-bottom:12px">
+      <label class="check"><input type="radio" name="where" value="external" checked> <span><b>Anywhere</b> — at home and away (uses <span id="extAddr"></span>)<div class="hint">Needs the port forward on your router. If it doesn't load at home, your router lacks "NAT loopback" — use the home link on devices that stay home.</div></span></label>
+      <label class="check"><input type="radio" name="where" value="home"> <span><b>Home network only</b> (<span id="homeAddr"></span>)</span></label>
+    </div>
     <div class="actions">
       <a class="btn primary" id="installBtn" href="#">Install in Stremio</a>
       <button type="button" class="btn" id="copyBtn">Copy manifest URL</button>
@@ -516,12 +520,27 @@
     } catch (e) { msg('Test failed: ' + e.message, false); }
   });
 
+  // Install link for "anywhere" (external address) or "home network only".
+  let lastLinks = null;
+  if (B.links && B.links.external) {
+    $('whereBox').style.display = '';
+    $('extAddr').textContent = B.links.external.replace(/^https?:\/\//, '');
+    $('homeAddr').textContent = (B.links.home || location.origin).replace(/^https?:\/\//, '');
+  }
+  function showLink(fallback) {
+    const where = (document.querySelector('input[name=where]:checked') || {}).value;
+    const l = (lastLinks && B.links && B.links.external && lastLinks[where]) || fallback;
+    $('manifestUrl').textContent = l.manifestUrl;
+    $('installBtn').href = l.stremioUrl;
+  }
+  document.querySelectorAll('input[name=where]').forEach((r) => r.addEventListener('change', () => { if (lastLinks) showLink(lastLinks.home); }));
+
   $('form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     try {
       const j = await api('encode', $('save'));
-      $('manifestUrl').textContent = j.manifestUrl;
-      $('installBtn').href = j.stremioUrl;
+      lastLinks = j.links || null;
+      showLink(j);
       $('install').classList.add('show');
       $('msg').className = 'msg';
       $('install').scrollIntoView({ behavior: 'smooth' });

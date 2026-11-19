@@ -65,4 +65,6 @@ The server makes **outbound HTTPS** requests to:
 | Other providers (if used) | `api.anthropic.com`, `generativelanguage.googleapis.com`, `api.mistral.ai`, `api.deepseek.com`, `api.groq.com`, `api.together.xyz` |
 | Installer only | `deb.nodesource.com` (Node.js), your distribution's apt mirrors (nginx), `local-ip.sh` (certificate, weekly) |
 
-**Inbound:** your Stremio devices must reach the server on **443** (or 8443) for HTTPS, or **7000** for local plain HTTP. Nothing needs to be opened to the internet unless you choose the Caddy/own-domain method.
+**Inbound:** your Stremio devices must reach the server on **443** (or 8443) for HTTPS, or **7000** for local plain HTTP. Nothing needs to be opened to the internet unless you want outside access.
+
+**Outside access (optional):** a **public IPv4 address** that isn't behind carrier-grade NAT (static is easiest; check that the IP your router shows matches `curl https://api.ipify.org`), and a router where you can set up **port forwarding**. Behind CGNAT, or without router access, use a tunnel (Cloudflare Tunnel, Tailscale Funnel) with `--public-url` instead.

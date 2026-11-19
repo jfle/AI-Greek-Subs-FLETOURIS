@@ -1,6 +1,6 @@
 {
   "name": "ai-greek-subs-fletouris",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Stremio addon that translates English subtitles to Greek (or 17 other languages) with the AI you choose: Sign in with ChatGPT or Grok, OpenRouter, API keys, or local LM Studio / Ollama.",
   "main": "server.js",
   "scripts": {

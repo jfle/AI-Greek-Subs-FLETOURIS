@@ -4,6 +4,13 @@
 #   sudo ./install.sh                  install or update (keeps settings, cache and sign-ins)
 #   sudo ./install.sh --https none     plain HTTP only (Stremio desktop on your LAN)
 #   sudo ./install.sh --port 7100      use another port for the addon
+#   sudo ./install.sh --public-ip auto [--public-port 8443]
+#                                      also reachable outside your home network: public IP (auto-detected,
+#                                      or give it) + the port you forward on your router
+#   sudo ./install.sh --public-url https://subs.example.com
+#                                      also reachable at your own domain / tunnel (it provides HTTPS)
+#   sudo ./install.sh --no-public      home network only again
+#   sudo ./install.sh --password PW    set the configuration-page password (generated when going public)
 #   sudo ./install.sh --uninstall      remove the service (keeps data); add --purge to delete data too
 #
 # After installing, open the printed address, configure your AI provider and click "Install in Stremio".
@@ -21,6 +28,12 @@ OLD_DIRS=(/opt/stremio-ai-subtitle-translator)
 OLD_SERVICES=(stremio-ai-subtitles)
 OLD_SITES=(stremio-ai-subtitles)
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONF=/etc/$APP.conf      # settings remembered between updates (root only)
+ENVFILE=/etc/$APP.env    # secrets for the service (root only)
+PUBLIC_IP=""; PUBLIC_PORT=""; PUBLIC_URL_EXT=""; CONFIG_PASSWORD=""
+# shellcheck disable=SC1090
+[[ -r "$CONF" ]] && . "$CONF"
+[[ -r "$ENVFILE" ]] && CONFIG_PASSWORD=$(sed -n 's/^CONFIG_PASSWORD=//p' "$ENVFILE" | head -1)
 
 c_b=$'\e[1;34m'; c_g=$'\e[1;32m'; c_y=$'\e[1;33m'; c_r=$'\e[1;31m'; c_0=$'\e[0m'
 step() { echo "${c_b}==>${c_0} $*"; }
@@ -32,15 +45,23 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --port) PORT="$2"; shift 2 ;;
     --https) HTTPS="$2"; shift 2 ;;
+    --public-ip) PUBLIC_IP="$2"; PUBLIC_URL_EXT=""; shift 2 ;;
+    --public-port) PUBLIC_PORT="$2"; shift 2 ;;
+    --public-url) PUBLIC_URL_EXT="${2%/}"; PUBLIC_IP=""; shift 2 ;;
+    --no-public) PUBLIC_IP=""; PUBLIC_PORT=""; PUBLIC_URL_EXT=""; shift ;;
+    --password) CONFIG_PASSWORD="$2"; shift 2 ;;
     --uninstall) UNINSTALL=1; shift ;;
     --purge) PURGE=1; shift ;;
     -y|--yes) shift ;;
-    -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
     *) die "Unknown option: $1 (see --help)" ;;
   esac
 done
 [[ $EUID -eq 0 ]] || die "Run as root: sudo $0 $*"
 [[ "$HTTPS" == localip || "$HTTPS" == none ]] || die "--https must be 'localip' or 'none'"
+[[ -z "$PUBLIC_PORT" || "$PUBLIC_PORT" =~ ^[0-9]+$ ]] || die "--public-port must be a number"
+[[ -z "$PUBLIC_URL_EXT" || "$PUBLIC_URL_EXT" =~ ^https:// ]] || die "--public-url must start with https:// (Stremio requires HTTPS)"
+if [[ -n "$PUBLIC_IP" && "$HTTPS" == none ]]; then die "--public-ip needs the built-in HTTPS (don't combine it with --https none; use --public-url for your own HTTPS)"; fi
 
 echo
 echo "${c_b}  ███  ${NAME}${c_0}"
@@ -55,7 +76,7 @@ if [[ $UNINSTALL -eq 1 ]]; then
   systemctl daemon-reload
   rm -f "/etc/nginx/sites-enabled/$APP" "/etc/nginx/sites-available/$APP"
   command -v nginx >/dev/null && nginx -t -q 2>/dev/null && systemctl reload nginx || true
-  if [[ $PURGE -eq 1 ]]; then rm -rf "$DIR"; userdel "$SVC_USER" 2>/dev/null || true; ok "Removed program and data"
+  if [[ $PURGE -eq 1 ]]; then rm -rf "$DIR" "$CONF" "$ENVFILE"; userdel "$SVC_USER" 2>/dev/null || true; ok "Removed program and data"
   else find "$DIR" -mindepth 1 -maxdepth 1 ! -name data -exec rm -rf {} + 2>/dev/null || true; ok "Removed program (settings kept in $DIR/data; use --purge to delete)"; fi
   exit 0
 fi
@@ -116,6 +137,29 @@ fi
 PUBLIC_URL=""
 LAN_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1)
 [[ -n "$LAN_IP" ]] || LAN_IP=$(hostname -I | awk '{print $1}')
+# ---------------------------------------------------------------- outside access (public IP / URL)
+EXTERNAL_URL=""; EXT_HOST=""
+if [[ -n "$PUBLIC_IP" ]]; then
+  if [[ "$PUBLIC_IP" == auto ]]; then
+    DETECTED=$(curl -fsS -m 8 https://api.ipify.org 2>/dev/null || curl -fsS -m 8 https://ifconfig.me/ip 2>/dev/null || true)
+    [[ "$DETECTED" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Could not detect your public IP; give it with --public-ip 1.2.3.4"
+    ok "Public IP detected: $DETECTED (re-run the installer if it changes)"
+    PUB_ADDR=$DETECTED
+  else
+    [[ "$PUBLIC_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "--public-ip must be an IPv4 address or 'auto'"
+    PUB_ADDR=$PUBLIC_IP
+  fi
+  EXT_HOST="${PUB_ADDR//./-}.local-ip.sh"
+elif [[ -n "$PUBLIC_URL_EXT" ]]; then
+  EXTERNAL_URL="$PUBLIC_URL_EXT"
+  EXT_HOST=$(echo "$PUBLIC_URL_EXT" | sed -E 's#^https://([^/:]+).*#\1#')
+fi
+NEW_PASSWORD=0
+if [[ -n "$EXT_HOST" && -z "$CONFIG_PASSWORD" ]]; then
+  CONFIG_PASSWORD=$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | cut -c1-16)
+  NEW_PASSWORD=1
+fi
+
 if [[ "$HTTPS" == localip ]]; then
   HOSTN="${LAN_IP//./-}.local-ip.sh"
   step "Setting up HTTPS at https://$HOSTN (works on your home network)"
@@ -151,13 +195,14 @@ EOF
 server {
     listen $HTTPS_PORT ssl;
     listen [::]:$HTTPS_PORT ssl;
-    server_name $HOSTN;
+    server_name $HOSTN${EXT_HOST:+ $EXT_HOST};
     ssl_certificate     /etc/ssl/local-ip/server.pem;
     ssl_certificate_key /etc/ssl/local-ip/server.key;
     location / {
         proxy_pass http://127.0.0.1:$PORT;
         proxy_set_header Host \$host;
         proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Real-IP \$remote_addr;
         proxy_read_timeout 120s;
     }
 }
@@ -167,10 +212,28 @@ EOF
   systemctl enable --now nginx >/dev/null 2>&1 || true
   systemctl reload nginx
   PUBLIC_URL="https://$HOSTN"; [[ $HTTPS_PORT -ne 443 ]] && PUBLIC_URL="$PUBLIC_URL:$HTTPS_PORT"
+  if [[ -n "$PUBLIC_IP" ]]; then
+    PUBLIC_PORT=${PUBLIC_PORT:-$HTTPS_PORT}
+    EXTERNAL_URL="https://$EXT_HOST"; [[ $PUBLIC_PORT -ne 443 ]] && EXTERNAL_URL="$EXTERNAL_URL:$PUBLIC_PORT"
+  fi
   ok "HTTPS ready (certificate refreshes weekly)"
 fi
 
 # ---------------------------------------------------------------- service
+# Remember the choices for the next update; keep secrets out of the world-readable unit file.
+umask 077
+{
+  echo "# $NAME installer settings (re-used by updates)"
+  echo "PORT=$PORT"; echo "HTTPS=$HTTPS"
+  echo "PUBLIC_IP=$PUBLIC_IP"; echo "PUBLIC_PORT=$PUBLIC_PORT"; echo "PUBLIC_URL_EXT=$PUBLIC_URL_EXT"
+} > "$CONF"
+{
+  if [[ -n "$EXTERNAL_URL" ]]; then echo "EXTERNAL_URL=$EXTERNAL_URL"; fi
+  if [[ -n "$CONFIG_PASSWORD" ]]; then echo "CONFIG_PASSWORD=$CONFIG_PASSWORD"; fi
+} > "$ENVFILE"
+chmod 600 "$CONF" "$ENVFILE"
+umask 022
+
 step "Creating service $APP"
 cat > "/etc/systemd/system/$APP.service" <<EOF
 [Unit]
@@ -186,6 +249,7 @@ ExecStart=$NODE server.js
 Environment=PORT=$PORT
 Environment=DATA_DIR=$DIR/data
 Environment=PUBLIC_URL=$PUBLIC_URL
+EnvironmentFile=-$ENVFILE
 Restart=always
 RestartSec=5
 NoNewPrivileges=true
@@ -210,6 +274,23 @@ echo "   1. Open  ${c_b}$URL/configure${c_0}  in a browser on your network"
 echo "   2. Choose your AI provider (sign in or paste a key), click Test translation"
 echo "   3. Click Generate install link → Install in Stremio"
 [[ -z "$PUBLIC_URL" ]] && echo "   (HTTP only: paste the manifest URL into Stremio desktop's addon search box)"
+if [[ -n "$EXTERNAL_URL" ]]; then
+  echo
+  echo "${c_g}  Outside your home network:${c_0} ${c_b}$EXTERNAL_URL${c_0}"
+  if [[ -n "$PUBLIC_IP" ]]; then
+    echo "   On your router, forward ${c_b}TCP port $PUBLIC_PORT${c_0} to ${c_b}$LAN_IP port $HTTPS_PORT${c_0} (\"port forwarding\" / \"virtual server\")."
+    if curl -fsS -m 6 "$EXTERNAL_URL/health" >/dev/null 2>&1; then ok "Reachable through your public address (checked from this machine)"
+    else warn "Not reachable through the public address from here yet - set up the port forward (some routers also need NAT loopback for this check)"; fi
+  else
+    echo "   Your domain/tunnel must provide HTTPS and forward to this machine (port $PORT)."
+  fi
+  echo "   In the configure page choose ${c_b}Anywhere${c_0} when generating the install link."
+fi
+if [[ -n "$CONFIG_PASSWORD" ]]; then
+  echo
+  if [[ $NEW_PASSWORD -eq 1 ]]; then echo "${c_y}  Configuration-page password (new): ${c_b}$CONFIG_PASSWORD${c_0}  - keep it; change with --password"
+  else echo "   The configuration page is password protected (change with --password)"; fi
+fi
 echo
 echo "   Logs:    journalctl -u $APP -f"
 echo "   Update:  run the newer installer the same way (settings are kept)"

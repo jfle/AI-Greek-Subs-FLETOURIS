@@ -33,6 +33,7 @@ Greek is the default; 17 other target languages are available on the configurati
 - **The right subtitle, in sync:** matches your exact release (OpenSubtitles hash, release group, source, edition), rejects wrong types (CD parts, forced-only, wrong episode, not English), checks the length, detects **frame-rate** differences (23.976 / 24 / 25 / 29.97 fps) and **aligns** the timing to the best-matching English subtitle — even across different cuts. See [Subtitle matching & sync](#subtitle-matching--sync).
 - **Cached:** finished translations are kept on disk for 30 days. Re-watching costs nothing.
 - **Private:** your settings are encrypted inside your personal addon link; sign-ins stay on your server.
+- **At home and away:** HTTPS on your home network out of the box; one installer option adds an external address (your public IP + a forwarded port, or your own domain), with a password-protected configuration page.
 - **Zero npm dependencies**, one small Node.js process, a one-file installer for Debian / Ubuntu / Raspberry Pi OS / Armbian.
 
 ## Quick start
@@ -47,6 +48,8 @@ sudo bash ai-greek-subs-fletouris-installer.sh
 ```
 
 It installs Node.js if needed, sets up a system service and **HTTPS on your home network** (Stremio requires HTTPS), then prints your address, e.g. `https://192-168-1-50.local-ip.sh/configure`.
+
+**Away from home too?** Add `--public-ip auto --public-port 8443` and forward that port on your router — see [INSTALL.md → Outside your home network](INSTALL.md#outside-your-home-network-public-ip-or-domain).
 
 **2. Configure:** open that address in a browser on your network, pick a provider, **sign in** (or paste a key), click **Load models**, pick a model and **Test translation**.
 
@@ -132,7 +135,7 @@ Small, fast models (luna / Flash / mini / Haiku / "non-reasoning" class) transla
 - Your configuration (provider, model, and any API key) is **encrypted (AES-256-GCM)** inside your personal addon link with a key that never leaves your server.
 - Sign-ins (ChatGPT, Grok, OpenRouter) are stored **only on your server** in `data/credentials/` (owner-only permissions); the addon link carries an opaque reference.
 - Anyone who has your full addon link can use your server — and therefore your AI account — so **don't share the link**. Share the project instead.
-- Optional `CONFIG_PASSWORD` protects the configuration page.
+- Optional `CONFIG_PASSWORD` protects the configuration page — set automatically when you enable outside access, with brute-force throttling. Without a password, configuration requests from outside are refused.
 
 See **[SECURITY.md](SECURITY.md)** for details and how to report a vulnerability.
 

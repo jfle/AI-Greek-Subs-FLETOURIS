@@ -11,6 +11,7 @@ Check **[REQUIREMENTS.md](REQUIREMENTS.md)** first if you're unsure whether your
 3. [Option C — Docker](#option-c--docker)
 4. [Option D — manually with Node.js (Windows, macOS, any Linux)](#option-d--manually-with-nodejs-windows-macos-any-linux)
 5. [HTTPS](#https)
+   - [Outside your home network (public IP or domain)](#outside-your-home-network-public-ip-or-domain)
 6. [Configure the addon](#configure-the-addon)
 7. [Install in Stremio](#install-in-stremio)
 8. [Local models (LM Studio / Ollama)](#local-models-lm-studio--ollama)
@@ -45,6 +46,11 @@ The installer:
 | Option | Meaning |
 |---|---|
 | *(none)* | Install, or update an existing installation (settings are kept) |
+| `--public-ip auto` / `--public-ip 1.2.3.4` | Also make the addon reachable **outside your home network** through your public IP — see [Outside your home network](#outside-your-home-network-public-ip-or-domain) |
+| `--public-port 8443` | The port you forward on your router for outside access (default: the HTTPS port, 443) |
+| `--public-url https://subs.example.com` | Outside access through your own domain or tunnel (it provides HTTPS) |
+| `--no-public` | Home network only again |
+| `--password PW` | Set the configuration-page password (one is generated automatically when you enable outside access) |
 | `--https none` | Skip nginx/HTTPS — plain HTTP only. Use this if you provide HTTPS yourself (Caddy, Cloudflare Tunnel, Tailscale…) |
 | `--port 7100` | Run the addon on another local port (default `7000`; the installer also picks a free one automatically) |
 | `--uninstall` | Remove the service and program, keep `data/` (settings, sign-ins, cache) |
@@ -52,6 +58,8 @@ The installer:
 | `--help` | Show the options |
 
 If port 443 is already used by another program, HTTPS is set up on **8443** instead (the printed address includes it).
+
+The installer remembers your choices (in `/etc/ai-greek-subs-fletouris.conf`, secrets in `/etc/ai-greek-subs-fletouris.env`, both root-only), so later updates keep them without repeating the options.
 
 Useful commands afterwards:
 
@@ -140,6 +148,37 @@ Stremio only installs addons over **HTTPS** (except `localhost`). Pick one:
 | **Cloudflare Tunnel** | Anywhere, no port forwarding | Low–medium (needs a domain on Cloudflare) |
 | **Caddy + your domain / DuckDNS** | Anywhere | Medium (port forwarding 80/443) |
 
+### Outside your home network (public IP or domain)
+
+To use the addon away from home (phone on mobile data, a hotel, a friend's TV), give the server a second, **external** address. The home address keeps working.
+
+**With a static (or rarely changing) public IP — no domain needed:**
+
+```bash
+sudo bash ai-greek-subs-fletouris-installer.sh --public-ip auto --public-port 8443
+```
+
+1. The installer detects your public IP (or give it: `--public-ip 194.0.2.10`) and adds `https://<your-public-ip>.local-ip.sh:8443` — the same free wildcard certificate covers it, because `194-0-2-10.local-ip.sh` simply resolves to `194.0.2.10`.
+2. **On your router, forward TCP port 8443 to the server's LAN IP, port 443** (often called *port forwarding*, *virtual server* or *NAT rules*). Use any free external port; 8443 avoids clashing with a router's own remote-admin page on 443.
+3. Because the configuration page becomes reachable from the internet, the installer **sets a configuration password** (printed at the end; change it with `--password`). Wrong passwords are slowed down and an address is locked out for 15 minutes after 10 attempts. Without a password, the server refuses configuration requests that arrive through the external address.
+4. Open the configure page, generate the install link and choose **Anywhere**. That link works at home and away.
+
+> **At home, the "Anywhere" link goes out to your public IP and back in.** Most routers handle this ("NAT loopback"/"hairpinning"). If yours doesn't, the addon won't load at home with that link: install the **Home network only** link on devices that never leave home, or enable NAT loopback on the router.
+
+If your public IP changes, re-run the installer (with no options — it re-detects `auto`) and reinstall the addon link. For a changing IP, a free dynamic-DNS name with your own HTTPS is the better fit:
+
+**With your own domain or a tunnel:**
+
+```bash
+sudo bash ai-greek-subs-fletouris-installer.sh --public-url https://subs.example.com
+```
+
+The domain must provide HTTPS itself — Cloudflare Tunnel, Tailscale Funnel, or Caddy/another reverse proxy forwarding to the server (see the sections below). The installer adds it as the external address and sets a password, just like `--public-ip`.
+
+**Docker / manual:** set `EXTERNAL_URL=https://…` and `CONFIG_PASSWORD=…` in the environment.
+
+To switch outside access off again: `sudo bash ai-greek-subs-fletouris-installer.sh --no-public`, then remove the router's port forward.
+
 ### local-ip.sh (installer default)
 
 Nothing to do — the installer configures nginx with the public `*.local-ip.sh` wildcard certificate. `192-168-1-50.local-ip.sh` simply resolves to `192.168.1.50`, so it only works **inside your network**.
@@ -220,6 +259,8 @@ If the server has `CONFIG_PASSWORD` set, a **Server password** field appears.
 
 Click **Generate install link**, then **Install in Stremio** (opens Stremio) or **Copy** the manifest URL.
 
+If outside access is enabled, choose **Anywhere** (works at home and away) or **Home network only** first.
+
 Your settings live *inside* that link (encrypted). To change them later, open the addon's ⚙ **Configure** button in Stremio — the page opens pre-filled — and install the new link.
 
 ---
@@ -273,7 +314,8 @@ Set them in the systemd unit (`sudo systemctl edit ai-greek-subs-fletouris`, the
 |---|---|---|
 | `PORT` | `7000` | Listen port |
 | `HOST` | `0.0.0.0` | Listen address (`127.0.0.1` when behind a local reverse proxy only) |
-| `PUBLIC_URL` | from the request | Public HTTPS base URL used in links (set this behind a reverse proxy / tunnel) |
+| `PUBLIC_URL` | from the request | HTTPS base URL for the home network (the installer sets it) |
+| `EXTERNAL_URL` | – | Second address that works outside the home network (public IP + forwarded port, or your domain). Requests arriving through it need `CONFIG_PASSWORD` for the configuration page |
 | `CONFIG_PASSWORD` | – | Password required to test, list models, sign in and generate links on the configure page |
 | `DATA_DIR` | `./data` | Encryption key, sign-ins, cache |
 | `SECRET` | random, saved in `data/secret.key` | Encrypts the settings inside addon links. Changing it (or losing `secret.key`) invalidates existing install links |
@@ -325,6 +367,9 @@ Then remove the addon in Stremio (**Add-ons → AI-Greek-Subs-Fletouris → Unin
 | "ChatGPT/Grok sign-in has expired" | Sign in again on the configure page and reinstall the link. Sign-ins are refreshed automatically while the server runs; long downtime can expire them. |
 | Grok: "xAI did not allow this account…" | Your plan isn't enabled by xAI for app sign-in. Use an xAI API key instead. |
 | LM Studio: model doesn't load / times out | Make sure *Serve on Local Network* is on, the Base URL uses the PC's LAN IP, and the model fits in VRAM. Load it once with `lms load … --parallel 4`. |
+| The **Anywhere** link doesn't work away from home | Check the router's port forward (external port → server LAN IP, port 443) and that your public IP hasn't changed (`curl https://api.ipify.org` on the server). Some mobile/ISP networks use CGNAT — then a public IP isn't reachable and you need a tunnel (`--public-url`). |
+| The **Anywhere** link doesn't work at home | Your router lacks NAT loopback — use the **Home network only** link at home, or enable NAT loopback. |
+| "Too many wrong passwords" | Wait 15 minutes; the lockout is per address. The password is in `/etc/ai-greek-subs-fletouris.env`. |
 | Port 7000 already in use | The installer picks the next free port automatically; for manual runs set `PORT`. |
 
 Logs: `journalctl -u ai-greek-subs-fletouris -f` (installer), `docker logs -f ai-greek-subs` (Docker), or the terminal (manual). Each translation logs lines like `[start]`, `[serve] … translating 47%`, `[done] … 1010 cues, 0 failed, 56.5s`.

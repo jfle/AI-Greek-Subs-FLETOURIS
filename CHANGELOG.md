@@ -2,6 +2,17 @@
 
 All notable changes to this project. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org).
 
+## [1.9.0] — 2026-11-19
+
+### Added
+- **Outside access:** an external address next to the home-network one.
+  - `--public-ip auto|<ip>` + `--public-port <port>`: `https://<public-ip>.local-ip.sh:<port>` with the same free wildcard certificate — no domain needed; forward the port on your router.
+  - `--public-url https://…`: your own domain or tunnel.
+  - `--no-public` to switch it off; the installer remembers settings between updates (`/etc/ai-greek-subs-fletouris.conf`, secrets in a root-only `.env`).
+- The configure page offers the install link for **Anywhere** or **Home network only**.
+- Configuration password generated automatically when outside access is enabled; configuration requests through the external address are refused without one. Wrong passwords are delayed and locked out per address (10 tries / 15 min).
+- `EXTERNAL_URL` environment variable (Docker / manual installs).
+
 ## [1.8.0] — 2026-11-19
 
 ### Added
@@ -70,6 +81,7 @@ Early development.
 - Works within Stremio's ~10 s subtitle timeout: partial results, priority scheduling of the track being watched, opening lines first.
 - One Greek track per title, next-episode prefetch, reuse of already translated subtitles, 30-day cache.
 
+[1.9.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.9.0
 [1.8.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.8.0
 [1.7.1]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.7.1
 [1.7.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.7.0
