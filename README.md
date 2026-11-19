@@ -1,6 +1,6 @@
 # AIOStreams Standalone Installer
 
-Run the upstream AIOStreams Docker image with its own configuration, storage and lifecycle. This branch contains the deployment files for AIOStreams. The independent subtitle addon lives on the [HellasCue AI branch](https://github.com/jfle/aio-streams-subtitles-greek/tree/hellascue-ai).
+Run the upstream AIOStreams Docker image with its own configuration, storage and lifecycle. This branch contains the deployment files for AIOStreams. The independent subtitle addon lives on the [PolyCue AI branch](https://github.com/jfle/aio-streams-subtitles-greek/tree/polycue-ai).
 
 ## Install or update
 
