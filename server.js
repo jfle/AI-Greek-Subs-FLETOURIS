@@ -170,13 +170,13 @@ async function handleSubtitles(req, res, token, type, id, extra) {
   });
   // Pre-translate the chosen English subtitle as soon as playback starts.
   let current = null;
-  if (cfg.autoTranslate && tracks[0]) {
+  if (cfg.autoTranslate && tracks[0] && !report.hasPreferred) {
     const job = (current = getOrStartJob(tracks[0].src, cfg));
     // Ranks above older, abandoned jobs but below any track the user actually selects.
     job.lastRequested = Math.max(job.lastRequested || 0, Date.now() - 3600e3);
   }
   const d = report.decision || {};
-  console.log(`[subs] ${type} ${decodeURIComponent(id)}: ${tracks.length} track(s)${d.chosen ? ` · ${d.chosen} (${d.why})` : ''}${d.reuse ? ` · reusing ${d.reuse.from} (${d.reuse.fix})` : ''}`);
+  console.log(`[subs] ${type} ${decodeURIComponent(id)}: ${tracks.length} track(s)${report.hasPreferred ? " · on demand (higher-priority subtitle available)" : ""}${d.chosen ? ` · ${d.chosen} (${d.why})` : ''}${d.reuse ? ` · reusing ${d.reuse.from} (${d.reuse.fix})` : ''}`);
   send(res, 200, { subtitles, cacheMaxAge: 60 }, undefined, { 'Cache-Control': 'max-age=60' });
   // Start the next episode only after this one is translated, so it never takes LM Studio slots from it.
   if (cfg.prefetchNext && !cfg.prioritySources.length && type === 'series') {

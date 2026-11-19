@@ -116,7 +116,7 @@ test('CONFIG_PASSWORD protects the configuration API', async () => {
   }
 });
 
-test('a higher-priority Greek track prevents both AI tracks and translation jobs', async () => {
+test('a higher-priority Greek track leaves AI translation available on demand', async () => {
   const id = 'tt0000101';
   mock.state.listings[id] = [{ file: '-english' }, { file: '-greek', lang: 'el-GR' }];
   const { body } = await api(addon.base, 'encode', { config: {
@@ -126,10 +126,19 @@ test('a higher-priority Greek track prevents both AI tracks and translation jobs
   assert.deepEqual((await getJson(`${configured}/manifest.json`)).body.resources, ['subtitles']);
   const calls = mock.state.chatCalls;
   await getJson(`${configured}/stream/movie/${id}.json`);
-  assert.deepEqual((await getJson(`${configured}/subtitles/movie/${id}.json`)).body.subtitles, []);
+  const { body: { subtitles } } = await getJson(`${configured}/subtitles/movie/${id}.json`);
+  assert.equal(subtitles.length, 1);
+  assert.equal(subtitles[0].lang, 'ell');
+  assert.ok(!(await getJson(`${addon.base}/status`)).body.jobs.some((job) => job.status === 'translating'));
   assert.equal(mock.state.chatCalls, calls);
-  mock.state.listings[id] = [{ file: '-english' }];
-  assert.equal((await getJson(`${configured}/subtitles/movie/${id}.json`)).body.subtitles.length, 1);
+  assert.match(await (await fetch(subtitles[0].url)).text(), /ΕΛ Line 0/);
+  assert.ok(mock.state.chatCalls > calls);
+
+  const withoutGreek = 'tt0000102';
+  mock.state.listings[withoutGreek] = [{ file: '-english' }];
+  const afterSelection = mock.state.chatCalls;
+  assert.equal((await getJson(`${configured}/subtitles/movie/${withoutGreek}.json`)).body.subtitles.length, 1);
+  await waitFor(() => mock.state.chatCalls > afterSelection);
 });
 
 test('Krikri runs first with thinking off and cloud takes over if it fails', async () => {

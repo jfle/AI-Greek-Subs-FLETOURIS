@@ -2,6 +2,10 @@
 
 All notable changes to this project. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org).
 
+## [2.0.2] — 2026-11-19
+
+- Offer an AI backup track when a higher-priority addon already has subtitles. The player can request a translation by loading the backup track.
+
 ## [2.0.1] — 2026-11-19
 
 - Rename the Stremio addon to **AI-Fletouris** and use the Greek flag as its logo.

@@ -33,8 +33,6 @@ async function fetchSourceSubs(cfg, type, id, extra, ctx) {
     cfg.prioritySources.includes(sources[i]) &&
     list.some((s) => s?.url && isTargetLanguage(s.lang, cfg.targetLang) && !fingerprint(s, ctx).reject),
   );
-  if (hasPreferred) return { list: [], hasPreferred };
-
   const results = cfg.sources.map((source) => responses[sources.indexOf(source)]);
   const seen = new Set();
   const out = [];
@@ -70,7 +68,8 @@ async function selectSubtitles(cfg, type, id, extra = '', opts = {}) {
     video: { type, id, filename: ctx.filename || null, hash: Boolean(ctx.videoHash), release: ctx.release ? { group: ctx.release.group, source: ctx.release.source, edition: ctx.release.edition } : null },
     runtime: null,
     candidates: [],
-    decision: hasPreferred ? { why: 'higher-priority addon supplied the target language' } : null,
+    hasPreferred,
+    decision: null,
   };
   if (!list.length) return { tracks: [], report };
 
