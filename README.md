@@ -11,7 +11,7 @@ PolyCue AI gives Stremio a single subtitle addon with **OpenSubtitles v3 built i
 ## One install. Three ways to get the track.
 
 1. **OpenSubtitles v3 first.** PolyCue lists the available tracks in your selected language. A separate OpenSubtitles addon is optional.
-2. **Local Krikri next.** If you configure Llama-Krikri-8B-Instruct, PolyCue tries it first for AI translation, with thinking off. Local inference uses no cloud quota.
+2. **Local Krikri next.** If you configure Llama-Krikri-8B-Instruct, PolyCue tries it first for AI translation, with thinking off. Local inference uses no cloud quota. [Download the official Q4_K_M GGUF (5.04 GB)](https://huggingface.co/ilsp/Llama-Krikri-8B-Instruct-GGUF/resolve/main/llama-krikri-8b-instruct-q4_k_m.gguf?download=true).
 3. **Cloud when needed.** Set a cloud API provider to take over when the local model is unavailable or fails. If OpenSubtitles has a track, the AI backup waits until your player loads it.
 
 <p align="center"><img src="docs/images/polycue-order.png" alt="OpenSubtitles v3 first, then local Krikri AI, then optional cloud AI." width="960"></p>

@@ -13,7 +13,7 @@ The installer starts the `polycue-ai` systemd service, stores the app under `/op
 ## Choose your language and backup
 
 1. Open **/configure** and choose **Language to show in Stremio**.
-2. Leave the default provider for OpenSubtitles alone. Add a **Local Krikri API URL** for local AI, and optionally select a cloud provider for fallback. The local endpoint should expose the model as `llama-krikri-8b-instruct`.
+2. Leave the default provider for OpenSubtitles alone. Add a **Local Krikri API URL** for local AI, and optionally select a cloud provider for fallback. [Download the official Krikri Q4_K_M GGUF (5.04 GB)](https://huggingface.co/ilsp/Llama-Krikri-8B-Instruct-GGUF/resolve/main/llama-krikri-8b-instruct-q4_k_m.gguf?download=true) and load it in LM Studio or another GGUF-compatible runner. The local endpoint should expose the model as `llama-krikri-8b-instruct`.
 3. Test translation if enabled, then generate the private install link and open it in Stremio. If you want PolyCue as your only OpenSubtitles source, disable the separate OpenSubtitles addon after verifying the new link.
 
 An AI backup is offered when PolyCue has translation configured and finds an English subtitle to translate. When OpenSubtitles already supplies the chosen language, the AI track is generated on demand. Set **Additional priority sources** only if you also use other subtitle addons.
