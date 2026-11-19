@@ -10,6 +10,14 @@ sudo bash install.sh
 
 The installer starts the `polycue-ai` systemd service, stores the app under `/opt/polycue-ai`, and prints its HTTPS configuration address. Use `--https none` for HTTP behind your own reverse proxy and `--public-url https://subs.example.com` for the proxy's external address. Run `bash install.sh --help` for options.
 
+## Home network or remote access
+
+- **Home network only** requires no router changes. Use the local HTTPS address printed by the installer and select **Home network only** when generating the Stremio link.
+- **Remote access with port forwarding** uses `sudo bash install.sh --public-ip auto --public-port 8443`. On your router, forward **TCP 8443** to the Pi's HTTPS port (normally **443**). Use the destination port printed by the installer and select **Anywhere** when generating the link. Keep port 7000 off the public internet.
+- **Remote access without port forwarding** can use an HTTPS tunnel. Point the tunnel at PolyCue on port 7000 and run `sudo bash install.sh --https none --public-url https://subs.example.com` with your tunnel's HTTPS address. Select **Anywhere** in PolyCue. A private VPN is another option if every remote Stremio device can join it and reach a suitable HTTPS URL for PolyCue.
+
+The Pi must be online and reachable for PolyCue to return subtitles, including its built-in OpenSubtitles v3 results.
+
 ## Find the configuration URL and password
 
 On the Pi or other systemd host, run `sudo polycue-config` to print your configuration URL and current configuration password. If external access was configured, it prints that URL too. The command requires root because the password is stored in a root-only file.
