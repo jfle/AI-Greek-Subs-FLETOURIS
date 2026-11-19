@@ -21,6 +21,16 @@
   .hero p { margin: 4px 0 0; opacity: .95; }
   .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 64px; }
   .sub { color: var(--muted); margin: 0 0 20px; }
+  .source-order { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; padding: 0; margin: 0; list-style: none; counter-reset: source; }
+  .source-order li { counter-increment: source; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel2); }
+  .source-order li::before { content: counter(source) ". "; color: var(--blue); font-weight: 700; }
+  .source-order span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
+  .order-note { margin: 12px 0 18px; }
+  .password-block, .provider-block { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px; }
+  .settings-fold { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+  .settings-fold[open] > summary { margin-bottom: 12px; }
+  .settings-fold summary .hint { margin-left: 8px; }
+  [hidden] { display: none !important; }
   section { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--blue); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(13,94,175,.06); }
   section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--blue); margin: 0 0 14px; }
   label { display: block; font-weight: 600; margin: 14px 0 6px; font-size: 14px; }
@@ -63,7 +73,7 @@
   .devcode { display: inline-block; margin: 10px 0 6px; padding: 8px 14px; font: 700 26px/1.1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 3px; background: #fff; border: 2px solid var(--blue); border-radius: 8px; color: var(--blue); }
   .linkbtn { background: none; border: 0; color: var(--blue); cursor: pointer; font: inherit; padding: 0; text-decoration: underline; }
   footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 24px; }
-  @media (max-width: 600px) { .grid3 { grid-template-columns: 1fr; } .row { flex-direction: column; } .hero h1 { font-size: 21px; } }
+  @media (max-width: 600px) { .grid3, .source-order { grid-template-columns: 1fr; } .row { flex-direction: column; } .hero h1 { font-size: 21px; } }
 </style>
 </head>
 <body>
@@ -77,17 +87,30 @@
   </div>
 </div>
 <div class="wrap">
-  <p class="sub">Choose your language. Get OpenSubtitles v3 tracks first, with local or cloud AI translation as a backup.</p>
+  <p class="sub">Set up one Stremio addon for OpenSubtitles and optional AI translation.</p>
 
   <form id="form" autocomplete="off">
     <section>
-      <h2>Subtitle language</h2>
+      <h2>1. Choose your subtitle language</h2>
       <label for="targetLang">Language to show in Stremio</label>
       <select id="targetLang"></select>
+    <div class="password-block" id="pwSection" style="display:none">
+      <label for="password">PolyCue configuration password</label>
+      <input type="password" id="password" autocomplete="current-password" placeholder="Password from the Pi">
+        <p class="hint">This unlocks setup, connection checks and link generation. On the Pi, run <code>sudo polycue-config</code> to retrieve it.</p>
+    </div>
     </section>
     <section>
-      <h2>AI translation backup</h2>
-      <div id="localModelWrap">
+      <h2>2. Choose your subtitle sources</h2>
+      <ol class="source-order" aria-label="Subtitle priority">
+        <li><strong>OpenSubtitles v3</strong><span>Always checked first. No login required.</span></li>
+        <li><strong>Local AI</strong><span id="orderLocal">Optional. Runs on your computer.</span></li>
+        <li><strong>Cloud AI</strong><span id="orderCloud">Optional. Used if the local model is unavailable or fails.</span></li>
+      </ol>
+      <p class="hint order-note">AI needs an English subtitle file. If OpenSubtitles already has your language, PolyCue waits until the player loads the AI backup.</p>
+      <details class="settings-fold" id="localModelWrap">
+        <summary>Local AI backup <span class="hint" id="localSummary">Optional</span></summary>
+        <p class="hint">Run a model on your own computer. No provider sign-in is needed for a local server without authentication.</p>
       <label for="localBaseUrl">Local model API URL (optional)</label>
       <input id="localBaseUrl" placeholder="http://gpu-pc.lan:1234/v1">
       <label for="localModel">Local model ID (optional override)</label>
@@ -101,9 +124,11 @@
         · <a href="https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF" target="_blank" rel="noopener noreferrer">Download Qwen2.5-7B-Instruct for more languages</a>.
         Enter the exact model ID shown by your local server, or leave the default shown above. PolyCue tries the local model before the cloud provider.
       </div>
-      </div>
-      <label for="provider">Provider</label>
-      <select id="provider"></select>
+      </details>
+      <div class="provider-block">
+        <label for="provider" id="providerLabel">Cloud provider (optional)</label>
+        <select id="provider" aria-describedby="providerHelp"></select>
+        <p class="hint" id="providerHelp"></p>
 
       <div class="authbox" id="authBox" style="display:none">
         <div id="orAuth" style="display:none">
@@ -115,7 +140,7 @@
         </div>
         <div id="gptAuth" style="display:none">
           <button type="button" class="btn primary" id="gptSignIn">Sign in with ChatGPT</button>
-          <div class="hint">Uses your ChatGPT Plus or Pro plan instead of a paid API key (counts toward your plan's usage).</div>
+          <div class="hint">Uses an eligible ChatGPT account through the sign-in flow. Access and usage depend on your account and OpenAI’s terms.</div>
           <div id="gptSteps" style="display:none">
             <ol class="steps">
               <li>Approve access in the OpenAI tab that just opened.</li>
@@ -130,7 +155,7 @@
         </div>
         <div id="xaiAuth" style="display:none">
           <button type="button" class="btn primary" id="xaiSignIn">Sign in with Grok</button>
-          <div class="hint">Uses your <b>SuperGrok</b> or <b>X Premium</b> plan instead of a paid API key. xAI's consent screen may say "Grok Build" — that is xAI's shared sign-in for apps.</div>
+          <div class="hint">Uses the Grok account you authorize if it is eligible. You can also use an xAI API key below.</div>
           <div id="xaiSteps" style="display:none">
             <ol class="steps">
               <li><a id="xaiLink" href="#" target="_blank" rel="noopener"><b>Open x.ai</b></a> (any device) and sign in with your Grok / X account.</li>
@@ -139,10 +164,11 @@
             </ol>
           </div>
         </div>
-        <div id="viaOr" style="display:none">
+        <details id="viaOr" style="display:none">
+          <summary>Other sign-in option</summary>
           <div class="hint" id="viaOrText"></div>
           <button type="button" class="btn" id="viaOrBtn" style="margin-top:8px"></button>
-        </div>
+        </details>
         <div class="authstatus" id="authStatus"></div>
       </div>
 
@@ -164,15 +190,18 @@
       <div class="hint">Pick a model from the list, or click <b>Load models</b> to fetch every model your account can use. Check your provider’s pricing and usage limits.</div>
 
       </div>
-      <div id="baseUrlWrap">
+      <details class="settings-fold" id="baseUrlWrap">
+        <summary id="baseUrlTitle">API endpoint settings</summary>
         <label for="baseUrl">API base URL</label>
         <input type="text" id="baseUrl">
-        <div class="hint">Only change this for a proxy or self-hosted endpoint (LM Studio: <code>http://&lt;PC-IP&gt;:1234/v1</code>, Ollama: <code>http://&lt;PC-IP&gt;:11434/v1</code>). Use the PC's network address, not <code>localhost</code>.</div>
+        <div class="hint">Only change this for a proxy or self-hosted endpoint (LM Studio: <code>http://&lt;PC-IP&gt;:1234/v1</code>, Ollama: <code>http://&lt;PC-IP&gt;:11434/v1</code>). Use the PC's network address when the model runs on a different machine.</div>
+      </details>
       </div>
     </section>
 
     <section>
-      <h2>Translation</h2>
+      <details>
+      <summary>Translation and timing preferences</summary>
 
       <label for="instructions">Extra instructions for the model <span class="hint">(optional)</span></label>
       <textarea id="instructions" placeholder="e.g. Use informal, everyday dialogue."></textarea>
@@ -183,11 +212,12 @@
       <label class="check"><input type="checkbox" id="autoSync"> <span>Check that the subtitle matches your video, and fix its timing automatically<div class="hint">Matches the release (OpenSubtitles hash, release group, source, edition), rejects wrong types (CD parts, forced-only, wrong episode, not English), checks the length, detects frame-rate differences and aligns timing to the best-matching English subtitle.</div></span></label>
       <label class="check"><input type="checkbox" id="syncNotes"> <span>Show a short note at the start when the timing was corrected or couldn't be verified<div class="hint">If a subtitle is still off, use the player's own control: subtitles menu (CC) → Delay.</div></span></label>
       <label class="check"><input type="checkbox" id="showOriginalWhilePending"> <span>While a translation is still running, show the remaining lines in English (italics)</span></label>
+      </details>
     </section>
 
     <section>
       <details>
-        <summary>Advanced</summary>
+        <summary>Advanced sources and model settings</summary>
         <label for="sources" style="margin-top:14px">English subtitle sources (Stremio subtitle addon URLs, one per line)</label>
         <textarea id="sources"></textarea>
         <div class="hint">OpenSubtitles v3 is built in. Add optional sources if you need more English files.</div>
@@ -207,22 +237,21 @@
       </details>
     </section>
 
-    <section id="pwSection" style="display:none">
-      <h2>Server password</h2>
-      <input type="password" id="password" placeholder="Configuration password set on the server">
+    <section>
+      <h2>3. Install in Stremio</h2>
+      <p class="hint">Generate your private link, then choose where to use it and open Stremio.</p>
+      <div class="actions">
+        <button type="submit" class="btn primary" id="save">Generate install link</button>
+        <button type="button" class="btn" id="test" hidden>Test translation</button>
+      </div>
+      <div class="msg" id="msg" role="status" aria-live="polite"></div>
     </section>
-
-    <div class="actions">
-      <button type="button" class="btn" id="test">Test translation</button>
-      <button type="submit" class="btn primary" id="save">Generate install link</button>
-    </div>
-    <div class="msg" id="msg"></div>
   </form>
 
   <section class="install" id="install" style="margin-top:16px">
-    <h2>Install</h2>
+    <h2>Your Stremio install link</h2>
     <div id="whereBox" style="display:none; margin-bottom:12px">
-      <label class="check"><input type="radio" name="where" value="external" checked> <span><b>Anywhere</b> — at home and away (uses <span id="extAddr"></span>)<div class="hint">Needs the port forward on your router. If it doesn't load at home, your router lacks "NAT loopback" — use the home link on devices that stay home.</div></span></label>
+      <label class="check"><input type="radio" name="where" value="external" checked> <span><b>Anywhere</b> — at home and away (uses <span id="extAddr"></span>)<div class="hint">Your Pi must be online and reachable from outside your network.</div></span></label>
       <label class="check"><input type="radio" name="where" value="home"> <span><b>Home network only</b> (<span id="homeAddr"></span>)</span></label>
     </div>
     <div class="actions">
@@ -262,7 +291,25 @@
     history.replaceState(null, '', location.pathname);
   }
 
-  for (const [k, p] of Object.entries(B.providers)) $('provider').add(new Option(p.label, k));
+  const accessLabels = {
+    native: 'None — OpenSubtitles and optional local AI',
+    chatgpt: 'ChatGPT — account sign-in',
+    xai: 'Grok — API key or account sign-in',
+    openrouter: 'OpenRouter — API key or account sign-in',
+    custom: 'Custom local endpoint — optional API key',
+  };
+  const providerSelect = $('provider');
+  providerSelect.add(new Option(accessLabels.native, 'native'));
+  for (const [label, ids] of [
+    ['Cloud · API keys', Object.keys(B.providers).filter((id) => !(id in accessLabels))],
+    ['Cloud · account sign-in or API key', ['openrouter', 'chatgpt', 'xai']],
+    ['Local · custom endpoint', ['custom']],
+  ]) {
+    const group = document.createElement('optgroup');
+    group.label = label;
+    for (const id of ids) group.append(new Option(accessLabels[id] || `${B.providers[id].label} — API key`, id));
+    providerSelect.append(group);
+  }
   for (const [k, name] of Object.entries(B.languages)) $('targetLang').add(new Option(name, k));
 
   // Model picker: a dropdown of known/loaded models plus "Other…" for typing any model ID.
@@ -299,20 +346,48 @@
     deepseek: viaOr('DeepSeek', 'deepseek/', 'DeepSeek offers no sign-in for other apps.'),
     groq: viaOr('the same open models (Llama, Qwen…)', 'meta-llama/', 'Groq offers no sign-in for other apps.'),
     together: viaOr('the same open models (Llama, Qwen…)', 'meta-llama/', 'Together AI offers no sign-in for other apps.'),
-    openai: { switchTo: 'chatgpt', text: 'Have ChatGPT Plus or Pro? Sign in with ChatGPT instead of paying for an API key.', button: 'Switch to "Sign in with ChatGPT"' },
   };
 
   function suggestedLocalModel() {
     return $('targetLang').value === 'ell' ? B.localModels.greek : B.localModels.multilingual;
   }
 
+  function updateSourceOrder() {
+    const provider = $('provider').value;
+    const english = $('targetLang').value === 'eng';
+    const local = provider === 'custom' || Boolean($('localBaseUrl').value.trim());
+    const cloud = provider !== 'native' && provider !== 'custom';
+    $('orderLocal').textContent = english ? 'English tracks come directly from OpenSubtitles.' :
+      local ? 'Configured. First choice when AI translation is needed.' : 'Off until you enter a local endpoint.';
+    $('orderCloud').textContent = english ? 'AI translation is not needed for English.' :
+      cloud ? local ? 'Provider selected. Used when local AI fails or is unavailable.' : 'Provider selected. Used for AI translation.' :
+      'Off. No cloud requests.';
+    $('localSummary').textContent = local ? 'Endpoint entered' : 'Optional';
+    $('test').hidden = english || (!local && !cloud);
+  }
+
+  let currentProvider;
   function onProvider(initial) {
-    const p = B.providers[$('provider').value];
+    const provider = $('provider').value;
+    const p = B.providers[provider];
+    if (!initial && provider !== currentProvider) $('apiKey').value = '';
+    currentProvider = provider;
     const showProvider = $('provider').value !== 'native';
     $('modelWrap').style.display = showProvider ? '' : 'none';
     const custom = $('provider').value === 'custom';
     $('localModelWrap').style.display = custom ? 'none' : '';
     $('checkPrimaryModel').hidden = !custom;
+    $('providerLabel').textContent = custom ? 'AI provider' : 'Cloud provider (optional)';
+    $('providerHelp').textContent = ({
+      native: 'Use OpenSubtitles alone, or enter a local endpoint above. No cloud account required.',
+      custom: 'Enter the local server URL in API endpoint settings. Provide its key if authentication is enabled.',
+      openrouter: 'Sign in with OpenRouter or enter an OpenRouter API key.',
+      xai: 'Enter an xAI API key or use the Grok account sign-in option.',
+      chatgpt: 'This option uses ChatGPT account sign-in. For an OpenAI API key, choose OpenAI from the API key group.',
+    })[provider] || 'Enter an API key from this provider. Charges depend on your provider and model.';
+    $('baseUrlTitle').textContent = custom ? 'Local server address' : 'API endpoint settings (advanced)';
+    if (custom) $('baseUrlWrap').open = true;
+    else if (!initial || !$('baseUrl').value || $('baseUrl').value === p.baseUrl) $('baseUrlWrap').open = false;
     $('primaryModelStatus').className = 'msg';
     $('localModelStatus').className = 'msg';
     const defaultModel = $('provider').value === 'custom' ? suggestedLocalModel() : p.defaultModel;
@@ -335,6 +410,7 @@
     $('apiKeyLabel').textContent = p.auth === 'openrouter' ? '…or paste an API key' : p.auth === 'xai' ? '…or paste an xAI API key' : 'API key';
     if (!initial && credential && credential.type !== p.auth) { credId = ''; credential = null; }
     renderAuth();
+    updateSourceOrder();
   }
 
   function renderAuth() {
@@ -367,9 +443,12 @@
   $('gptRedirect').textContent = B.chatgptRedirect;
   $('prioritySources').value = (c.prioritySources || []).join('\n');
   $('localBaseUrl').value = c.localBaseUrl || '';
+  $('localModelWrap').open = Boolean(c.localBaseUrl);
+  $('localBaseUrl').addEventListener('input', updateSourceOrder);
   $('localModel').value = c.localModel || '';
   $('localModel').placeholder = suggestedLocalModel();
   $('targetLang').addEventListener('change', () => {
+    updateSourceOrder();
     $('localModel').placeholder = suggestedLocalModel();
     if ($('provider').value === 'custom' && Object.values(B.localModels).includes($('model').value)) {
       $('model').value = suggestedLocalModel();
@@ -537,16 +616,10 @@
     } catch (e) { msg('Could not start Grok sign-in: ' + e.message, false); }
   });
 
-  // ---- Providers without sign-in: switch to ChatGPT sign-in, or OpenRouter sign-in with that vendor's models ----
+  // ---- Offer OpenRouter sign-in for selected providers ----
   $('viaOrBtn').addEventListener('click', async () => {
     const alt = ALT_SIGNIN[$('provider').value];
     if (!alt) return;
-    if (alt.switchTo) {
-      $('provider').value = alt.switchTo;
-      onProvider(false);
-      $('gptSignIn').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
     $('provider').value = 'openrouter';
     onProvider(false);
     $('model').value = '';
