@@ -6,7 +6,7 @@ const { LANGUAGES } = require('./languages');
 
 const PROVIDERS = {
   native: {
-    label: 'OpenSubtitles with optional local Krikri',
+    label: 'OpenSubtitles with optional local AI',
     type: 'native',
     baseUrl: '',
     defaultModel: '',

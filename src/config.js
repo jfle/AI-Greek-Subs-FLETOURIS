@@ -25,6 +25,19 @@ const KEY = loadSecret();
 
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
 
+const LOCAL_MODELS = {
+  greek: PROVIDERS.custom.defaultModel,
+  multilingual: 'qwen2.5-7b-instruct',
+};
+
+function localModelFor(cfg) {
+  return cfg.localModel || (cfg.targetLang === 'ell' ? LOCAL_MODELS.greek : LOCAL_MODELS.multilingual);
+}
+
+function customBaseUrl() {
+  return DEFAULTS.localBaseUrl || PROVIDERS.custom.baseUrl;
+}
+
 const DEFAULTS = {
   provider: 'native',
   apiKey: '',
@@ -34,6 +47,7 @@ const DEFAULTS = {
   sources: [OPEN_SUBTITLES_URL],
   prioritySources: sourceList(process.env.PRIORITY_SUBTITLE_SOURCES),
   localBaseUrl: endpoint(process.env.LOCAL_LLM_URL),
+  localModel: '',
   maxCandidates: 1,
   autoTranslate: true,
   batchSize: 0, // 0 = automatic (see effectiveLimits)
@@ -78,16 +92,13 @@ function normalizeConfig(input = {}) {
   if (!Object.hasOwn(PROVIDERS, c.provider)) c.provider = DEFAULTS.provider;
   const p = PROVIDERS[c.provider];
   c.apiKey = String(c.apiKey || '').trim();
-  c.model = String(c.model || '').trim() || p.defaultModel;
-  c.baseUrl = String(c.baseUrl || '').trim().replace(/\/+$/, '') || p.baseUrl;
-  if (c.provider === 'custom' && DEFAULTS.localBaseUrl) {
-    c.baseUrl = DEFAULTS.localBaseUrl;
-    c.model = p.defaultModel;
-    c.apiKey = '';
-  }
   c.localBaseUrl = endpoint(c.localBaseUrl);
+  c.localModel = String(c.localModel || '').trim().slice(0, 200);
   c.prioritySources = sourceList(c.prioritySources);
   c.targetLang = languageCode(c.targetLang) || DEFAULTS.targetLang;
+  const custom = c.provider === 'custom';
+  c.baseUrl = endpoint(c.baseUrl) || (custom ? customBaseUrl() : p.baseUrl);
+  c.model = String(c.model || '').trim() || (custom ? localModelFor(c) : p.defaultModel);
   let sources = Array.isArray(c.sources) ? c.sources : String(c.sources || '').split(/[\n,]+/);
   sources = sources.map(normalizeSourceUrl).filter((s) => /^https?:\/\//i.test(s));
   c.sources = sources.length ? [...new Set(sources)] : DEFAULTS.sources;
@@ -120,8 +131,8 @@ function encodeConfig(obj) {
   const p = PROVIDERS[cfg.provider];
   const compact = { v: 1 };
   for (const [k, v] of Object.entries(cfg)) {
-    if (k === 'model' && v === p.defaultModel) continue;
-    if (k === 'baseUrl' && v === p.baseUrl) continue;
+    if (k === 'model' && v === (cfg.provider === 'custom' ? localModelFor(cfg) : p.defaultModel)) continue;
+    if (k === 'baseUrl' && v === (cfg.provider === 'custom' ? customBaseUrl() : p.baseUrl)) continue;
     if (k !== 'provider' && JSON.stringify(v) === JSON.stringify(DEFAULTS[k])) continue;
     compact[k] = v;
   }
@@ -163,4 +174,4 @@ function sign(str) {
   return crypto.createHmac('sha256', KEY).update(str).digest('base64url').slice(0, 22);
 }
 
-module.exports = { DATA_DIR, DEFAULTS, OPEN_SUBTITLES_URL, canTranslate, normalizeConfig, encodeConfig, decodeConfig, sign, b64url, effectiveLimits };
+module.exports = { DATA_DIR, DEFAULTS, OPEN_SUBTITLES_URL, LOCAL_MODELS, localModelFor, canTranslate, normalizeConfig, encodeConfig, decodeConfig, sign, b64url, effectiveLimits };

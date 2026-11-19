@@ -5,7 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { PROVIDERS, LANGUAGES, listModels } = require('./src/providers');
-const { DEFAULTS, canTranslate, normalizeConfig, encodeConfig, decodeConfig, sign, b64url } = require('./src/config');
+const { DEFAULTS, LOCAL_MODELS, localModelFor, canTranslate, normalizeConfig, encodeConfig, decodeConfig, sign, b64url } = require('./src/config');
 const { getOrStartJob, renderJob, translateLines, status, openingReady, etaMs } = require('./src/translator');
 const { selectSubtitles } = require('./src/select');
 const { alignmentFor, isNoop, retimeCues, describeFix } = require('./src/sync');
@@ -106,6 +106,7 @@ function renderPage(cfg) {
     credential: cfg && cfg.credId ? auth.credSummary(cfg.credId) : null,
     chatgptRedirect: auth.CHATGPT_REDIRECT,
     languages: LANGUAGES,
+    localModels: LOCAL_MODELS,
     passwordRequired: !!CONFIG_PASSWORD,
     links: { home: PUBLIC_URL || null, external: EXTERNAL_URL || null },
     version: pkg.version,
@@ -329,12 +330,12 @@ async function handleApi(req, res, action) {
     }
     if (action === 'models') {
       const cfg = normalizeConfig(body.config || {});
-      if (cfg.provider === 'native') return send(res, 200, { models: cfg.localBaseUrl ? [PROVIDERS.custom.defaultModel] : [] });
+      if (cfg.provider === 'native') return send(res, 200, { models: cfg.localBaseUrl ? [localModelFor(cfg)] : [] });
       return send(res, 200, { models: await listModels(cfg) });
     }
     if (action === 'test') {
       const cfg = normalizeConfig(body.config || {});
-      if (!canTranslate(cfg)) throw new Error('Set a local Krikri endpoint or choose a cloud provider and a non-English target language first');
+      if (!canTranslate(cfg)) throw new Error('Set a local model endpoint or choose a cloud provider and a non-English target language first');
       const started = Date.now();
       const out = await translateLines(
         { 1: "Where were you last night? I've been calling you for hours!", 2: '<i>Come on, we have to go.</i>' },

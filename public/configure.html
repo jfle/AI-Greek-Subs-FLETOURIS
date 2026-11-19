@@ -87,9 +87,17 @@
     </section>
     <section>
       <h2>AI translation backup</h2>
-      <label for="localBaseUrl">Local Krikri API URL (optional)</label>
+      <div id="localModelWrap">
+      <label for="localBaseUrl">Local model API URL (optional)</label>
       <input id="localBaseUrl" placeholder="http://gpu-pc.lan:1234/v1">
-      <div class="hint"><a href="https://huggingface.co/ilsp/Llama-Krikri-8B-Instruct-GGUF/resolve/main/llama-krikri-8b-instruct-q4_k_m.gguf?download=true" target="_blank" rel="noopener noreferrer">Download Krikri Q4_K_M (5.04 GB)</a> and load it on your model server. If you also configure a cloud provider, PolyCue tries Krikri first.</div>
+      <label for="localModel">Local model ID (optional override)</label>
+      <input id="localModel" placeholder="Model ID from your local server">
+      <div class="hint" id="localModelHint">
+        <a href="https://huggingface.co/ilsp/Llama-Krikri-8B-Instruct-GGUF/resolve/main/llama-krikri-8b-instruct-q4_k_m.gguf?download=true" target="_blank" rel="noopener noreferrer">Download Krikri Q4_K_M for Greek</a>
+        · <a href="https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF" target="_blank" rel="noopener noreferrer">Download Qwen2.5-7B-Instruct for more languages</a>.
+        Enter the exact model ID shown by your local server, or leave the default shown above. PolyCue tries the local model before the cloud provider.
+      </div>
+      </div>
       <label for="provider">Provider</label>
       <select id="provider"></select>
 
@@ -288,14 +296,20 @@
     openai: { switchTo: 'chatgpt', text: 'Have ChatGPT Plus or Pro? Sign in with ChatGPT instead of paying for an API key.', button: 'Switch to "Sign in with ChatGPT"' },
   };
 
+  function suggestedLocalModel() {
+    return $('targetLang').value === 'ell' ? B.localModels.greek : B.localModels.multilingual;
+  }
+
   function onProvider(initial) {
     const p = B.providers[$('provider').value];
     const showProvider = $('provider').value !== 'native';
     $('modelWrap').style.display = showProvider ? '' : 'none';
-    if (!initial || !$('model').value) $('model').value = p.defaultModel;
+    $('localModelWrap').style.display = $('provider').value === 'custom' ? 'none' : '';
+    const defaultModel = $('provider').value === 'custom' ? suggestedLocalModel() : p.defaultModel;
+    if (!initial || !$('model').value) $('model').value = defaultModel;
     fillModels(p.models);
     if (!initial || !$('baseUrl').value) $('baseUrl').value = p.baseUrl;
-    $('model').placeholder = p.defaultModel;
+    $('model').placeholder = defaultModel;
     $('keyHint').innerHTML = p.keyUrl ? `Get a key at <a href="${p.keyUrl}" target="_blank" rel="noopener">${new URL(p.keyUrl).host}</a>. It is stored encrypted inside your addon URL — not on this page.` : 'Leave empty if your endpoint needs no key.';
     $('baseUrlWrap').style.display = !showProvider || p.auth === 'chatgpt' ? 'none' : '';
     const alt = ALT_SIGNIN[$('provider').value];
@@ -343,6 +357,14 @@
   $('gptRedirect').textContent = B.chatgptRedirect;
   $('prioritySources').value = (c.prioritySources || []).join('\n');
   $('localBaseUrl').value = c.localBaseUrl || '';
+  $('localModel').value = c.localModel || '';
+  $('localModel').placeholder = suggestedLocalModel();
+  $('targetLang').addEventListener('change', () => {
+    $('localModel').placeholder = suggestedLocalModel();
+    if ($('provider').value === 'custom' && Object.values(B.localModels).includes($('model').value)) {
+      $('model').value = suggestedLocalModel();
+    }
+  });
   $('sources').value = (c.sources || []).join('\n');
   $('maxCandidates').value = c.maxCandidates;
   $('batchSize').value = c.batchSize || '';
@@ -370,6 +392,7 @@
       credId,
       prioritySources: $('prioritySources').value,
       localBaseUrl: $('localBaseUrl').value.trim(),
+      localModel: $('localModel').value.trim(),
       sources: $('sources').value.split(/\n+/).map((s) => s.trim()).filter(Boolean),
       maxCandidates: +$('maxCandidates').value,
       batchSize: +$('batchSize').value || 0,

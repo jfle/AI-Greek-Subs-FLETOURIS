@@ -167,13 +167,13 @@ test('French installation returns built-in OpenSubtitles tracks without credenti
   assert.equal(mock.state.chatCalls, calls);
 });
 
-test('French backup translates locally first and falls back to cloud when needed', async () => {
+test('French backup supports a multilingual default, a custom local model, and cloud fallback', async () => {
   const id = 'tt0000202';
   mock.state.listings[id] = [{ file: '-english', lang: 'eng' }, { file: '-french', lang: 'fre' }];
   const local = await startMockProviders();
   const cloud = await startMockProviders();
   try {
-    local.state.localModel = true;
+    local.state.localModel = 'qwen2.5-7b-instruct';
     const config = {
       provider: 'openai', apiKey: 'cloud-key', targetLang: 'fr', model: 'cloud-model',
       localBaseUrl: `${local.base}/v1`, baseUrl: `${cloud.base}/v1`,
@@ -185,10 +185,14 @@ test('French backup translates locally first and falls back to cloud when needed
     assert.equal(local.state.chatCalls, 0);
     assert.equal(cloud.state.chatCalls, 0);
     await (await fetch(subtitles[1].url)).text();
+    assert.equal(local.state.chatBodies[0].model, 'qwen2.5-7b-instruct');
     assert.match(local.state.chatBodies[0].messages[0].content, /spoken French/);
+    local.state.localModel = 'my-multilingual-model';
+    assert.equal((await api(addon.base, 'test', { config: { ...config, localModel: 'my-multilingual-model' } })).status, 200);
+    assert.equal(local.state.chatBodies.at(-1).model, 'my-multilingual-model');
     assert.equal(cloud.state.chatCalls, 0);
     local.state.rejectChat = true;
-    assert.equal((await api(addon.base, 'test', { config })).status, 200);
+    assert.equal((await api(addon.base, 'test', { config: { ...config, localModel: 'my-multilingual-model' } })).status, 200);
     assert.match(cloud.state.chatBodies[0].messages[0].content, /spoken French/);
   } finally {
     await local.close();

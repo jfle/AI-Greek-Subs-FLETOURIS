@@ -11,13 +11,13 @@ PolyCue AI gives Stremio a single subtitle addon with **OpenSubtitles v3 built i
 ## One install. Three ways to get the track.
 
 1. **OpenSubtitles v3 first.** PolyCue lists the available tracks in your selected language. A separate OpenSubtitles addon is optional.
-2. **Local Krikri next.** If you configure Llama-Krikri-8B-Instruct, PolyCue tries it first for AI translation, with thinking off. Local inference uses no cloud quota. [Download the official Q4_K_M GGUF (5.04 GB)](https://huggingface.co/ilsp/Llama-Krikri-8B-Instruct-GGUF/resolve/main/llama-krikri-8b-instruct-q4_k_m.gguf?download=true).
-3. **Cloud when needed.** Set a cloud API provider to take over when the local model is unavailable or fails. If OpenSubtitles has a track, the AI backup waits until your player loads it.
+2. **Local AI next.** PolyCue defaults to Krikri for Greek and Qwen2.5-7B-Instruct for other languages. Set a different model ID if your local server uses one. Local inference uses no cloud quota. [Download the official Krikri Q4_K_M GGUF (5.04 GB)](https://huggingface.co/ilsp/Llama-Krikri-8B-Instruct-GGUF/resolve/main/llama-krikri-8b-instruct-q4_k_m.gguf?download=true) · [Download Qwen2.5-7B-Instruct GGUF](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF).
+3. **Cloud when needed.** Set a cloud API provider to take over when the selected local model is unavailable or fails. If OpenSubtitles has a track, the AI backup waits until your player loads it.
 
-<p align="center"><img src="docs/images/polycue-order.png" alt="OpenSubtitles v3 first, then local Krikri AI, then optional cloud AI." width="960"></p>
+<p align="center"><img src="docs/images/polycue-order.png" alt="OpenSubtitles v3 first, then local AI, then optional cloud AI." width="960"></p>
 
 **Built for real releases.** PolyCue checks the English source against the video release, can correct supported timing issues, and caches finished translations for rewatching.
 
-**Start with OpenSubtitles alone.** It needs no AI account. Translation requires a usable English subtitle file, and language coverage and quality depend on the source and model. Krikri is tuned for Greek. For other languages, compare the test translation with your chosen cloud model.
+**Start with OpenSubtitles alone.** It needs no AI account. Translation requires a usable English subtitle file, and language coverage and quality depend on the source and model. Krikri is tuned for Greek. For other languages, use the test translation to compare your multilingual local and cloud options.
 
 PolyCue AI is an independent, MIT-licensed Stremio addon. Cloud providers may charge for usage. The [AIOStreams standalone install](https://github.com/jfle/aio-streams-subtitles-greek/tree/aiostreams-standalone) lives on its own branch.

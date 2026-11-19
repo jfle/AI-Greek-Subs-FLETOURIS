@@ -5,10 +5,10 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { chat, LANGUAGES, PROVIDERS, localModelAvailable } = require('./providers');
+const { chat, LANGUAGES, localModelAvailable } = require('./providers');
 const { toSrt } = require('./subtitles');
 const { downloadCues } = require('./sync');
-const { DATA_DIR, effectiveLimits } = require('./config');
+const { DATA_DIR, effectiveLimits, localModelFor } = require('./config');
 
 const CACHE_DIR = path.join(DATA_DIR, 'cache');
 const CACHE_DAYS = parseFloat(process.env.CACHE_DAYS || '30');
@@ -16,9 +16,13 @@ const MAX_BATCH_CHARS = 6000;
 const jobs = new Map();
 
 function jobKey(srcUrl, cfg) {
+  const key = [srcUrl, cfg.provider, cfg.model, cfg.targetLang, cfg.instructions];
+  if (cfg.localBaseUrl && cfg.provider !== 'custom' && (cfg.targetLang !== 'ell' || cfg.localModel)) {
+    key.push(localModelFor(cfg));
+  }
   return crypto
     .createHash('sha256')
-    .update([srcUrl, cfg.provider, cfg.model, cfg.targetLang, cfg.instructions].join('|'))
+    .update(key.join('|'))
     .digest('hex')
     .slice(0, 32);
 }
@@ -84,7 +88,7 @@ async function translateLines(lines, context, cfg) {
     const local = {
       ...cfg,
       provider: 'custom',
-      model: PROVIDERS.custom.defaultModel,
+      model: localModelFor(cfg),
       baseUrl: cfg.localBaseUrl,
       apiKey: '',
       credId: '',
@@ -103,7 +107,7 @@ async function translateLines(lines, context, cfg) {
       releaseSlot(poolKey);
     }
   }
-  if (cfg.provider === 'native') throw new Error('Local Krikri is unavailable and no cloud provider is configured');
+  if (cfg.provider === 'native') throw new Error('The selected local model is unavailable and no cloud provider is configured');
   return translate(cfg);
 }
 

@@ -126,7 +126,7 @@ function startMockProviders({ lines = 120, llmDelayMs = 30 } = {}) {
         }
       }
       if (p === '/v1/models' && state.localModel) {
-        return json(200, { data: [{ id: 'llama-krikri-8b-instruct' }] });
+        return json(200, { data: [{ id: typeof state.localModel === 'string' ? state.localModel : 'llama-krikri-8b-instruct' }] });
       }
       if (p === '/v1/models') return json(200, { data: [{ id: 'gpt-6-luna', visibility: 'list' }, { id: 'gpt-6-sol', visibility: 'list' }, { id: 'internal-x', visibility: 'hidden' }] });
       if (p === '/v1/responses') {
