@@ -55,7 +55,7 @@ test('Sign in with Grok: device code → poll → plan models → translate with
   assert.match(start.body.verificationUriComplete, /^https:\/\/accounts\.x\.ai\//);
   assert.equal(mock.state.xaiDevice.client_id, 'b1a00492-073a-47ea-816f-4c329264a828');
   assert.match(mock.state.xaiDevice.scope, /api:access/);
-  assert.equal(mock.state.xaiDevice.referrer, 'ai-greek-subs-fletouris');
+  assert.equal(mock.state.xaiDevice.referrer, 'aio-streams-subtitles-greek');
 
   const done = await waitFor(async () => {
     const r = await api(addon.base, 'oauth/xai/poll', { pendingId: start.body.pendingId });

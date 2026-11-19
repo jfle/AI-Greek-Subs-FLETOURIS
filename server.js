@@ -1,5 +1,5 @@
 'use strict';
-// AI-Greek-Subs-Fletouris — zero-dependency Node.js Stremio addon server.
+// AIO-Streams&Subtitles-Greek — zero-dependency Node.js Stremio addon server.
 
 const http = require('http');
 const fs = require('fs');
@@ -17,6 +17,8 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, ''); // home-network (LAN) address
 // Address that works from outside the home network (public IP + forwarded port, or a domain).
 const EXTERNAL_URL = (process.env.EXTERNAL_URL || '').replace(/\/+$/, '');
+// The bundled AIOStreams instance, if installed (the configure page links to it).
+const AIOSTREAMS_URL = (process.env.AIOSTREAMS_URL || '').replace(/\/+$/, '');
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || '';
 const hostOf = (u) => { try { return new URL(u).host.toLowerCase(); } catch { return ''; } };
 const KNOWN_BASES = [PUBLIC_URL, EXTERNAL_URL].filter(Boolean);
@@ -40,7 +42,7 @@ function manifest(cfg, base) {
   return {
     id: 'community.ai-greek-subs-fletouris',
     version: pkg.version,
-    name: 'AI-Greek-Subs-Fletouris',
+    name: 'AIO-Streams&Subtitles-Greek',
     logo: `${base}/logo.png`,
     background: `${base}/background.png`,
     description:
@@ -108,7 +110,7 @@ function renderPage(cfg) {
     chatgptRedirect: auth.CHATGPT_REDIRECT,
     languages: LANGUAGES,
     passwordRequired: !!CONFIG_PASSWORD,
-    links: { home: PUBLIC_URL || null, external: EXTERNAL_URL || null },
+    links: { home: PUBLIC_URL || null, external: EXTERNAL_URL || null, aiostreams: AIOSTREAMS_URL || null },
     version: pkg.version,
   };
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
@@ -428,7 +430,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`AI-Greek-Subs-Fletouris v${pkg.version} listening on http://${HOST}:${PORT}`);
+  console.log(`AIO-Streams&Subtitles-Greek v${pkg.version} listening on http://${HOST}:${PORT}`);
   if (PUBLIC_URL) console.log(`Home network address: ${PUBLIC_URL}`);
   if (EXTERNAL_URL) console.log(`External address:     ${EXTERNAL_URL}${CONFIG_PASSWORD ? '' : '  (WARNING: no CONFIG_PASSWORD — the configure page is refused from outside)'}`);
   console.log(`Open http://<this-machine>:${PORT}/configure to set it up.`);

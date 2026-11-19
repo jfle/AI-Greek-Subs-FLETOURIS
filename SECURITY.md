@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please **don't open a public issue** for security problems. Use GitHub's private reporting instead: **[Report a vulnerability](https://github.com/jfle/ai-greek-subs-fletouris/security/advisories/new)** (repository → *Security* → *Report a vulnerability*). You'll get a reply within a few days.
+Please **don't open a public issue** for security problems. Use GitHub's private reporting instead: **[Report a vulnerability](https://github.com/jfle/aio-streams-subtitles-greek/security/advisories/new)** (repository → *Security* → *Report a vulnerability*). You'll get a reply within a few days.
 
 Only the latest release is supported with fixes.
 
@@ -15,7 +15,9 @@ Only the latest release is supported with fixes.
 | Subtitle downloads | The server only downloads subtitle URLs it handed out itself (HMAC-signed links), so it can't be abused as an open proxy. |
 | Service account | The installer runs the addon as an unprivileged `aigreeksubs` user with `NoNewPrivileges`, `ProtectSystem=full` and write access only to its data folder. |
 | Configure page | `CONFIG_PASSWORD` protects testing, model listing, sign-in and link generation. It is generated automatically when outside access is enabled; without it, configuration requests arriving through the external address are refused. Wrong passwords are delayed 1 s and an address is locked out for 15 minutes after 10 failures. |
-| Outside access | Only through HTTPS. Secrets (`CONFIG_PASSWORD`, `EXTERNAL_URL`) live in `/etc/ai-greek-subs-fletouris.env` (root-only), not in the world-readable systemd unit. |
+| Outside access | Only through HTTPS. Secrets (`CONFIG_PASSWORD`, `EXTERNAL_URL`) live in `/etc/aio-streams-subtitles-greek.env` (root-only), not in the world-readable systemd unit. |
+
+| Bundled AIOStreams | Runs in Docker, bound to `127.0.0.1` and reachable only through nginx HTTPS. Login required (`AIOSTREAMS_AUTH`); its `SECRET_KEY` encrypts stored configurations. `/opt/aiostreams/.env` is root-only. |
 
 ## What you should do
 

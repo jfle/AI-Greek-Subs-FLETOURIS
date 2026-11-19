@@ -47,5 +47,5 @@ body:
     id: logs
     attributes:
       label: Log lines
-      description: "`journalctl -u ai-greek-subs-fletouris -n 100` (or `docker logs`). Remove anything personal."
+      description: "`journalctl -u aio-streams-subtitles-greek -n 100` (or `docker logs`). Remove anything personal."
       render: text

@@ -1,20 +1,27 @@
 <div align="center">
 
-<img src="public/logo.png" alt="AI-Greek-Subs-Fletouris logo" width="128">
+<img src="public/logo.png" alt="AIO-Streams&Subtitles-Greek logo" width="128">
 
-# AI-Greek-Subs-Fletouris
+# AIO-Streams&Subtitles-Greek
 
-**AI-translated Greek subtitles for Stremio** — any movie or episode that has English subtitles.
+**Your own streams + AI-translated Greek subtitles for Stremio — one self-hosted package.**
 
-[![CI](https://github.com/jfle/ai-greek-subs-fletouris/actions/workflows/ci.yml/badge.svg)](https://github.com/jfle/ai-greek-subs-fletouris/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/jfle/ai-greek-subs-fletouris?label=release)](https://github.com/jfle/ai-greek-subs-fletouris/releases/latest)
+[![CI](https://github.com/jfle/aio-streams-subtitles-greek/actions/workflows/ci.yml/badge.svg)](https://github.com/jfle/aio-streams-subtitles-greek/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/jfle/aio-streams-subtitles-greek?label=release)](https://github.com/jfle/aio-streams-subtitles-greek/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node.js 18.17+](https://img.shields.io/badge/node-%3E%3D18.17-339933)
 ![No dependencies](https://img.shields.io/badge/npm%20dependencies-0-brightgreen)
 
 </div>
 
-A self-hosted [Stremio](https://www.stremio.com) addon. It finds the English subtitles for whatever you are watching, translates them to Greek with the AI model you choose, and adds the result to the player as a **Greek** subtitle track. It runs on a Raspberry Pi, an Orange Pi, any Linux box, Docker, or your own PC.
+One installer sets up two things on your Raspberry Pi, Orange Pi or any Linux box, both behind HTTPS that Stremio accepts — at home and, optionally, away:
+
+| Component | What it does |
+|---|---|
+| **Greek AI subtitles** (this project) | Finds the English subtitles for whatever you watch, checks they match your release and are in sync, translates them to Greek with the AI you choose, and adds a **Greek** track to the player. |
+| **[AIOStreams](https://github.com/Viren070/AIOStreams)** (bundled, optional) | The popular all-in-one stream aggregator: combines stream addons and your debrid service (Real-Debrid, AllDebrid, TorBox…) with filtering and sorting — self-hosted instead of a paid hosted instance. |
+
+Add the subtitle addon inside AIOStreams and Stremio needs **one addon** for streams and Greek subtitles. Prefer subtitles only? Install with `--no-aiostreams`.
 
 Greek is the default; 17 other target languages are available on the configuration page.
 
@@ -34,7 +41,8 @@ Greek is the default; 17 other target languages are available on the configurati
 - **Cached:** finished translations are kept on disk for 30 days. Re-watching costs nothing.
 - **Private:** your settings are encrypted inside your personal addon link; sign-ins stay on your server.
 - **At home and away:** HTTPS on your home network out of the box; one installer option adds an external address (your public IP + a forwarded port, or your own domain), with a password-protected configuration page.
-- **Zero npm dependencies**, one small Node.js process, a one-file installer for Debian / Ubuntu / Raspberry Pi OS / Armbian.
+- **AIOStreams included:** installed with Docker, behind the same HTTPS, with a login, weekly automatic updates and outside access — like a hosted instance, on your own hardware.
+- **Zero npm dependencies** for the subtitle server, a one-file installer for Debian / Ubuntu / Raspberry Pi OS / Armbian.
 
 ## Quick start
 
@@ -43,17 +51,24 @@ Greek is the default; 17 other target languages are available on the configurati
 **1. Install the server** (on the Pi / Linux box):
 
 ```bash
-curl -fsSLO https://github.com/jfle/ai-greek-subs-fletouris/releases/latest/download/ai-greek-subs-fletouris-installer.sh
-sudo bash ai-greek-subs-fletouris-installer.sh
+curl -fsSLO https://github.com/jfle/aio-streams-subtitles-greek/releases/latest/download/aio-streams-subtitles-greek-installer.sh
+sudo bash aio-streams-subtitles-greek-installer.sh
 ```
 
-It installs Node.js if needed, sets up a system service and **HTTPS on your home network** (Stremio requires HTTPS), then prints your address, e.g. `https://192-168-1-50.local-ip.sh/configure`.
+It installs Node.js (and Docker for AIOStreams) if needed, sets up both services and **HTTPS on your home network** (Stremio requires HTTPS), then prints both addresses and the AIOStreams login, e.g.:
 
-**Away from home too?** Add `--public-ip auto --public-port 8443` and forward that port on your router — see [INSTALL.md → Outside your home network](INSTALL.md#outside-your-home-network-public-ip-or-domain).
+- Subtitles: `https://192-168-1-50.local-ip.sh/configure`
+- AIOStreams: `https://192-168-1-50.local-ip.sh:8444`
+
+**Away from home too?** Add `--public-ip auto --public-port 8443` and forward ports 8443 (subtitles) and 8444 (AIOStreams) on your router — see [INSTALL.md → Outside your home network](INSTALL.md#outside-your-home-network-public-ip-or-domain).
 
 **2. Configure:** open that address in a browser on your network, pick a provider, **sign in** (or paste a key), click **Load models**, pick a model and **Test translation**.
 
-**3. Install in Stremio:** click **Generate install link → Install in Stremio**. Done — play anything and choose the **Greek** subtitle track.
+**3. Set up AIOStreams:** open its address, sign in with the printed login, add your debrid service and stream addons, and add the subtitle install link (from step 2's **Generate install link**) as a **custom addon**. Save and click **Install** — Stremio now gets streams and Greek subtitles from one addon.
+
+*(Subtitles only: click **Generate install link → Install in Stremio** in step 2 instead.)*
+
+Play anything and choose the **Greek** subtitle track.
 
 Other ways to install (git clone, Docker, Windows/macOS, behind your own domain) and every option are in **[INSTALL.md](INSTALL.md)**.
 
@@ -62,7 +77,7 @@ Other ways to install (git clone, Docker, Windows/macOS, behind your own domain)
 ```mermaid
 sequenceDiagram
     participant S as Stremio
-    participant A as AI-Greek-Subs (your server)
+    participant A as AIO-Streams&Subtitles-Greek (your server)
     participant O as OpenSubtitles
     participant M as AI model
     S->>A: You opened a movie / episode (stream request)
@@ -164,7 +179,7 @@ src/auth.js          sign-in flows (OpenRouter PKCE, Sign in with ChatGPT, Sign 
 src/config.js        encrypted per-user configuration inside the addon URL
 src/subtitles.js     SRT / VTT / ASS / SSA / MicroDVD parsing, SRT writing, encoding detection
 public/              configuration page, logo, background
-install.sh           installer / updater / uninstaller for Debian-based hosts
+install.sh           installer / updater / uninstaller for Debian-based hosts (incl. bundled AIOStreams)
 build-installer.sh   builds the single-file installer (dist/)
 test/                zero-dependency test suite with mock providers (npm test)
 ```
@@ -172,18 +187,18 @@ test/                zero-dependency test suite with mock providers (npm test)
 ## Development
 
 ```bash
-git clone https://github.com/jfle/ai-greek-subs-fletouris.git
-cd ai-greek-subs-fletouris
+git clone https://github.com/jfle/aio-streams-subtitles-greek.git
+cd aio-streams-subtitles-greek
 npm test            # runs the test suite (Node's built-in test runner, no installs)
 npm start           # http://localhost:7000/configure
-npm run build       # dist/ai-greek-subs-fletouris-installer.sh
+npm run build       # dist/aio-streams-subtitles-greek-installer.sh
 ```
 
 Contributions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**. Version history: **[CHANGELOG.md](CHANGELOG.md)**.
 
 ## Disclaimer
 
-This is an independent, community project. It is not affiliated with or endorsed by Stremio, OpenSubtitles, OpenAI, xAI, OpenRouter, Anthropic, Google or any other provider. You are responsible for following the terms of the AI services and subtitle sources you use. AI translations can contain mistakes.
+This is an independent, community project. It is not affiliated with or endorsed by Stremio, AIOStreams, OpenSubtitles, OpenAI, xAI, OpenRouter, Anthropic, Google or any other provider. AIOStreams is a separate open-source project by Viren070 under its own license; the installer runs its official Docker image unmodified. You are responsible for following the terms of the AI services and subtitle sources you use. AI translations can contain mistakes.
 
 ## License
 

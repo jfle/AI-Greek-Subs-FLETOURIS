@@ -173,8 +173,8 @@ function openaiHeaders(cfg) {
   const key = resolveKey(cfg);
   if (key) h.Authorization = `Bearer ${key}`;
   if (cfg.provider === 'openrouter') {
-    h['HTTP-Referer'] = 'https://github.com/ai-greek-subs-fletouris';
-    h['X-Title'] = 'AI-Greek-Subs-Fletouris';
+    h['HTTP-Referer'] = 'https://github.com/aio-streams-subtitles-greek';
+    h['X-Title'] = 'AIO-Streams&Subtitles-Greek';
   }
   return h;
 }

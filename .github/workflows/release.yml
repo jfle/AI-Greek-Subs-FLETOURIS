@@ -1,7 +1,7 @@
 name: Release
 
 # Push a tag like v1.7.0 to publish: GitHub release with the single-file installer + source tarball,
-# and a multi-arch Docker image at ghcr.io/<owner>/ai-greek-subs-fletouris.
+# and a multi-arch Docker image at ghcr.io/<owner>/aio-streams-subtitles-greek.
 on:
   push:
     tags: ['v*']
@@ -33,18 +33,18 @@ jobs:
 
           ### Install / update (Debian, Ubuntu, Raspberry Pi OS, Armbian)
           ```bash
-          curl -fsSLO https://github.com/${{ github.repository }}/releases/latest/download/ai-greek-subs-fletouris-installer.sh
-          sudo bash ai-greek-subs-fletouris-installer.sh
+          curl -fsSLO https://github.com/${{ github.repository }}/releases/latest/download/aio-streams-subtitles-greek-installer.sh
+          sudo bash aio-streams-subtitles-greek-installer.sh
           ```
           MD
-          echo "Docker: \`ghcr.io/${{ github.repository_owner }}/ai-greek-subs-fletouris:$v\` (or \`:latest\`) — see [INSTALL.md](https://github.com/${{ github.repository }}/blob/main/INSTALL.md)." >> notes.md
+          echo "Docker: \`ghcr.io/${{ github.repository_owner }}/aio-streams-subtitles-greek:$v\` (or \`:latest\`) — see [INSTALL.md](https://github.com/${{ github.repository }}/blob/main/INSTALL.md)." >> notes.md
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           body_path: notes.md
           files: |
-            dist/ai-greek-subs-fletouris-installer.sh
-            dist/ai-greek-subs-fletouris-*.tar.gz
+            dist/aio-streams-subtitles-greek-installer.sh
+            dist/aio-streams-subtitles-greek-*.tar.gz
 
   docker:
     runs-on: ubuntu-latest
@@ -60,7 +60,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/ai-greek-subs-fletouris
+          images: ghcr.io/${{ github.repository_owner }}/aio-streams-subtitles-greek
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

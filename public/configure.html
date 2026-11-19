@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI-Greek-Subs-Fletouris — Configure</title>
+<title>AIO-Streams&amp;Subtitles-Greek — Configure</title>
 <link rel="icon" type="image/png" href="/logo.png">
 <style>
   /* Greek flag theme: Greek blue #0D5EAF and white, nine stripes and the cross */
@@ -66,6 +66,7 @@
   .authstatus.warn { color: var(--err); }
   .steps { margin: 12px 0 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
   .steps li { margin-bottom: 4px; }
+  .aiobox { margin: 12px 0; padding: 12px 14px; border-left: 4px solid var(--blue); background: rgba(13, 94, 175, 0.06); border-radius: 6px; font-size: 14px; line-height: 1.5; }
   .devcode { display: inline-block; margin: 10px 0 6px; padding: 8px 14px; font: 700 26px/1.1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 3px; background: #fff; border: 2px solid var(--blue); border-radius: 8px; color: var(--blue); }
   .linkbtn { background: none; border: 0; color: var(--blue); cursor: pointer; font: inherit; padding: 0; text-decoration: underline; }
   footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 24px; }
@@ -80,7 +81,7 @@
   <div class="hero-in">
     <img src="/logo.png" alt="">
     <div>
-      <h1>AI-Greek-Subs-Fletouris</h1>
+      <h1>AIO-Streams&amp;Subtitles-Greek</h1>
       <p>Ελληνικοί υπότιτλοι με AI για το Stremio · AI Greek subtitles for Stremio</p>
     </div>
   </div>
@@ -215,6 +216,11 @@
       <button type="button" class="btn" id="copyBtn">Copy manifest URL</button>
     </div>
     <div class="url" id="manifestUrl"></div>
+    <div id="aioBox" class="aiobox" style="display:none">
+      <b>Using the bundled AIOStreams?</b> Add this link there instead, so Stremio needs only one addon:
+      open AIOStreams → <b>Addons</b> → <b>Custom addon</b> → paste the manifest URL → save, then reinstall AIOStreams in Stremio.
+      <div class="actions" style="margin-top:8px"><a class="btn" id="aioLink" href="#" target="_blank" rel="noopener">Open AIOStreams</a></div>
+    </div>
     <div class="hint">If the Install button doesn't open Stremio (e.g. this server isn't on HTTPS), copy the URL and paste it into Stremio → Addons → search box. Keep this URL private: it carries your encrypted settings, and anyone who has it can use your API key through this server.</div>
   </section>
 
@@ -347,7 +353,7 @@
   onProvider(true);
   $('provider').addEventListener('change', () => onProvider(false));
   if (B.passwordRequired) $('pwSection').style.display = '';
-  $('footer').innerHTML = `<span class="mini"></span>AI-Greek-Subs-Fletouris v${B.version}`;
+  $('footer').innerHTML = `<span class="mini"></span>AIO-Streams&amp;Subtitles-Greek v${B.version}`;
 
   function collect() {
     return {
@@ -532,6 +538,10 @@
     const l = (lastLinks && B.links && B.links.external && lastLinks[where]) || fallback;
     $('manifestUrl').textContent = l.manifestUrl;
     $('installBtn').href = l.stremioUrl;
+  }
+  if (B.links && B.links.aiostreams) {
+    $('aioBox').style.display = '';
+    $('aioLink').href = B.links.aiostreams;
   }
   document.querySelectorAll('input[name=where]').forEach((r) => r.addEventListener('change', () => { if (lastLinks) showLink(lastLinks.home); }));
 

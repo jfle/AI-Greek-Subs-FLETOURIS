@@ -18,7 +18,7 @@ const OA_AUTH = (process.env.OPENAI_AUTH_URL || 'https://auth.openai.com').repla
 const OA_ISSUER = process.env.OPENAI_ISSUER || 'https://auth.openai.com';
 const OA_RESOURCE = 'https://api.openai.com/v1';
 const OA_SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct';
-const APP_NAME = 'AI-Greek-Subs-Fletouris';
+const APP_NAME = 'AIO-Streams&Subtitles-Greek';
 
 const rand = (n = 32) => crypto.randomBytes(n).toString('base64url');
 function pkce() {
@@ -318,7 +318,7 @@ async function chatgptAccessToken(id) {
 const XAI_AUTH = (process.env.XAI_AUTH_URL || 'https://auth.x.ai').replace(/\/+$/, '');
 const XAI_CLIENT_ID = 'b1a00492-073a-47ea-816f-4c329264a828'; // xAI's public Grok client (no secret)
 const XAI_SCOPES = 'openid profile email offline_access grok-cli:access api:access';
-const XAI_REFERRER = 'ai-greek-subs-fletouris';
+const XAI_REFERRER = 'aio-streams-subtitles-greek';
 
 async function xaiForm(pathname, params) {
   let res;

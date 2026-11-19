@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve AI-Greek-Subs-Fletouris! Bug reports, translations of the UI, new providers and fixes are all welcome.
+Thanks for helping improve AIO-Streams&Subtitles-Greek! Bug reports, translations of the UI, new providers and fixes are all welcome.
 
 ## Ground rules
 
@@ -12,12 +12,12 @@ Thanks for helping improve AI-Greek-Subs-Fletouris! Bug reports, translations of
 ## Development setup
 
 ```bash
-git clone https://github.com/jfle/ai-greek-subs-fletouris.git
-cd ai-greek-subs-fletouris
+git clone https://github.com/jfle/aio-streams-subtitles-greek.git
+cd aio-streams-subtitles-greek
 npm start              # http://localhost:7000/configure  (data goes to ./data)
 npm test               # full test suite with local mock providers — no network, no keys needed
 npm run check          # syntax check of all files
-npm run build          # builds dist/ai-greek-subs-fletouris-installer.sh
+npm run build          # builds dist/aio-streams-subtitles-greek-installer.sh
 ```
 
 Stremio accepts `http://127.0.0.1:7000/<token>/manifest.json` from the same computer, so you can test the addon in Stremio desktop without HTTPS.
@@ -56,4 +56,4 @@ Stremio accepts `http://127.0.0.1:7000/<token>/manifest.json` from the same comp
 
 1. Bump `version` in `package.json` and move the changelog entries under the new version.
 2. Commit, then tag: `git tag v1.8.0 && git push --tags`.
-3. The *Release* workflow builds `ai-greek-subs-fletouris-installer.sh` and the source tarball, attaches them to a GitHub release, and publishes the Docker image to `ghcr.io/jfle/ai-greek-subs-fletouris`.
+3. The *Release* workflow builds `aio-streams-subtitles-greek-installer.sh` and the source tarball, attaches them to a GitHub release, and publishes the Docker image to `ghcr.io/jfle/aio-streams-subtitles-greek`.

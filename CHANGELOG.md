@@ -2,6 +2,16 @@
 
 All notable changes to this project. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org).
 
+## [2.0.0] — 2026-11-19
+
+### Changed
+- **New name: AIO-Streams&Subtitles-Greek** (repository `jfle/aio-streams-subtitles-greek`, installer `aio-streams-subtitles-greek-installer.sh`, service `aio-streams-subtitles-greek`, folder `/opt/aio-streams-subtitles-greek`). The Stremio addon ID is unchanged, so existing installs keep working.
+- Updating from AI-Greek-Subs-Fletouris migrates automatically: settings, sign-ins, cache, outside-access options and password move to the new name; the old service and nginx site are removed.
+
+### Added
+- **Bundled AIOStreams**: the installer also sets up the official AIOStreams Docker image behind the same HTTPS (port 8444), with a generated login and secret key, outside access, and weekly automatic updates (`sudo aiostreams-update`). Options: `--no-aiostreams`, `--aio-port`, `--aio-public-port`, `--aio-user`. Existing `/opt/aiostreams` installations are adopted unchanged.
+- The configure page links to the bundled AIOStreams and explains how to add the subtitle addon to it, so Stremio needs one addon.
+
 ## [1.9.0] — 2026-11-19
 
 ### Added
@@ -81,11 +91,12 @@ Early development.
 - Works within Stremio's ~10 s subtitle timeout: partial results, priority scheduling of the track being watched, opening lines first.
 - One Greek track per title, next-episode prefetch, reuse of already translated subtitles, 30-day cache.
 
-[1.9.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.9.0
-[1.8.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.8.0
-[1.7.1]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.7.1
-[1.7.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.7.0
-[1.6.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.6.0
-[1.5.2]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.5.2
-[1.5.1]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.5.1
-[1.5.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.5.0
+[2.0.0]: https://github.com/jfle/aio-streams-subtitles-greek/releases/tag/v2.0.0
+[1.9.0]: https://github.com/jfle/aio-streams-subtitles-greek/releases/tag/v1.9.0
+[1.8.0]: https://github.com/jfle/aio-streams-subtitles-greek/releases/tag/v1.8.0
+[1.7.1]: https://github.com/jfle/aio-streams-subtitles-greek/releases/tag/v1.7.1
+[1.7.0]: https://github.com/jfle/aio-streams-subtitles-greek/releases/tag/v1.7.0
+[1.6.0]: https://github.com/jfle/aio-streams-subtitles-greek/releases/tag/v1.6.0
+[1.5.2]: https://github.com/jfle/aio-streams-subtitles-greek/releases/tag/v1.5.2
+[1.5.1]: https://github.com/jfle/aio-streams-subtitles-greek/releases/tag/v1.5.1
+[1.5.0]: https://github.com/jfle/aio-streams-subtitles-greek/releases/tag/v1.5.0

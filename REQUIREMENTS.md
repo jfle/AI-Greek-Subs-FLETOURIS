@@ -1,6 +1,6 @@
 # Requirements
 
-What you need to run **AI-Greek-Subs-Fletouris**. In short: **one always-on machine** that your Stremio devices can reach over **HTTPS**, and **one AI account** (or a local model).
+What you need to run **AIO-Streams&Subtitles-Greek**. In short: **one always-on machine** that your Stremio devices can reach over **HTTPS**, and **one AI account** (or a local model).
 
 ## 1. Server (where the addon runs)
 
@@ -13,6 +13,8 @@ What you need to run **AI-Greek-Subs-Fletouris**. In short: **one always-on mach
 | Disk | ~5 MB for the program; the cache uses ~100–200 KB per translated episode (kept 30 days) | 100 MB free |
 | CPU | Negligible — the AI work happens at the provider (or on your GPU PC) | |
 | Network | Fixed LAN IP (DHCP reservation) so the addon address doesn't change | Wired Ethernet |
+
+**For the bundled AIOStreams (optional):** a **64-bit** OS (amd64 or arm64 — e.g. Raspberry Pi OS 64-bit), **Docker** (installed automatically), about **400 MB RAM** and 1 GB disk. A Pi with 2 GB RAM runs both comfortably. On 32-bit systems the installer skips AIOStreams.
 
 The installer also uses: `curl`, `nginx` (installed automatically for HTTPS), `cron` (weekly certificate refresh) and root access (`sudo`).
 
@@ -63,8 +65,9 @@ The server makes **outbound HTTPS** requests to:
 | Grok sign-in and models | `auth.x.ai`, `accounts.x.ai`, `api.x.ai`, `cli-chat-proxy.grok.com` |
 | OpenRouter | `openrouter.ai` |
 | Other providers (if used) | `api.anthropic.com`, `generativelanguage.googleapis.com`, `api.mistral.ai`, `api.deepseek.com`, `api.groq.com`, `api.together.xyz` |
+| AIOStreams (if bundled) | `ghcr.io` (image), `get.docker.com` / `download.docker.com` (Docker install), your debrid service and stream addons, `api.themoviedb.org` (optional) |
 | Installer only | `deb.nodesource.com` (Node.js), your distribution's apt mirrors (nginx), `local-ip.sh` (certificate, weekly) |
 
-**Inbound:** your Stremio devices must reach the server on **443** (or 8443) for HTTPS, or **7000** for local plain HTTP. Nothing needs to be opened to the internet unless you want outside access.
+**Inbound:** your Stremio devices must reach the server on **443** (or 8443) for HTTPS and **8444** for AIOStreams, or **7000** for local plain HTTP. Nothing needs to be opened to the internet unless you want outside access.
 
 **Outside access (optional):** a **public IPv4 address** that isn't behind carrier-grade NAT (static is easiest; check that the IP your router shows matches `curl https://api.ipify.org`), and a router where you can set up **port forwarding**. Behind CGNAT, or without router access, use a tunnel (Cloudflare Tunnel, Tailscale Funnel) with `--public-url` instead.

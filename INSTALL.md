@@ -1,6 +1,8 @@
 # Installation guide
 
-This guide covers every way to run **AI-Greek-Subs-Fletouris**, how to give it HTTPS (Stremio requires it), how to configure each AI provider, how to install it in Stremio, and how to update, back up and remove it.
+**AIO-Streams&Subtitles-Greek** = the Greek AI subtitle addon + a bundled, self-hosted [AIOStreams](https://github.com/Viren070/AIOStreams).
+
+This guide covers every way to run **AIO-Streams&Subtitles-Greek**, how to give it HTTPS (Stremio requires it), how to configure each AI provider, how to install it in Stremio, and how to update, back up and remove it.
 
 Check **[REQUIREMENTS.md](REQUIREMENTS.md)** first if you're unsure whether your hardware or account will work.
 
@@ -26,17 +28,17 @@ Check **[REQUIREMENTS.md](REQUIREMENTS.md)** first if you're unsure whether your
 For **Debian, Ubuntu, Raspberry Pi OS, Armbian** and other Debian-based systems (amd64, arm64, armhf). Ideal for a Raspberry Pi, Orange Pi, mini-PC, NAS VM or home server.
 
 ```bash
-curl -fsSLO https://github.com/jfle/ai-greek-subs-fletouris/releases/latest/download/ai-greek-subs-fletouris-installer.sh
-sudo bash ai-greek-subs-fletouris-installer.sh
+curl -fsSLO https://github.com/jfle/aio-streams-subtitles-greek/releases/latest/download/aio-streams-subtitles-greek-installer.sh
+sudo bash aio-streams-subtitles-greek-installer.sh
 ```
 
-(Or download `ai-greek-subs-fletouris-installer.sh` from the [Releases page](https://github.com/jfle/ai-greek-subs-fletouris/releases) and copy it to the machine.)
+(Or download `aio-streams-subtitles-greek-installer.sh` from the [Releases page](https://github.com/jfle/aio-streams-subtitles-greek/releases) and copy it to the machine.)
 
 The installer:
 
 1. Installs **Node.js 22** (from NodeSource) if Node 18.17+ isn't present.
-2. Copies the app to `/opt/ai-greek-subs-fletouris` and creates a dedicated system user `aigreeksubs`.
-3. Creates and starts the **`ai-greek-subs-fletouris`** systemd service (auto-starts on boot, restarts on failure, hardened).
+2. Copies the app to `/opt/aio-streams-subtitles-greek` and creates a dedicated system user `aigreeksubs`.
+3. Creates and starts the **`aio-streams-subtitles-greek`** systemd service (auto-starts on boot, restarts on failure, hardened).
 4. Sets up **HTTPS on your home network** with nginx and the free [local-ip.sh](https://local-ip.sh) certificate, at `https://<your-ip-with-dashes>.local-ip.sh` (e.g. `https://192-168-1-50.local-ip.sh`). The certificate is refreshed weekly by cron.
 5. Keeps settings, cache and sign-ins from a previous installation.
 6. Prints the address to open next.
@@ -51,6 +53,10 @@ The installer:
 | `--public-url https://subs.example.com` | Outside access through your own domain or tunnel (it provides HTTPS) |
 | `--no-public` | Home network only again |
 | `--password PW` | Set the configuration-page password (one is generated automatically when you enable outside access) |
+| `--no-aiostreams` | Subtitle addon only: don't install the bundled AIOStreams (stops it if it was installed; its data is kept) |
+| `--aio-port 8444` | HTTPS port for AIOStreams (default 8444) |
+| `--aio-public-port 8444` | Router port for outside access to AIOStreams (default: same as `--aio-port`) |
+| `--aio-user NAME` | Username for the AIOStreams login (default `admin`; the password is generated) |
 | `--https none` | Skip nginx/HTTPS — plain HTTP only. Use this if you provide HTTPS yourself (Caddy, Cloudflare Tunnel, Tailscale…) |
 | `--port 7100` | Run the addon on another local port (default `7000`; the installer also picks a free one automatically) |
 | `--uninstall` | Remove the service and program, keep `data/` (settings, sign-ins, cache) |
@@ -59,25 +65,40 @@ The installer:
 
 If port 443 is already used by another program, HTTPS is set up on **8443** instead (the printed address includes it).
 
-The installer remembers your choices (in `/etc/ai-greek-subs-fletouris.conf`, secrets in `/etc/ai-greek-subs-fletouris.env`, both root-only), so later updates keep them without repeating the options.
+The installer remembers your choices (in `/etc/aio-streams-subtitles-greek.conf`, secrets in `/etc/aio-streams-subtitles-greek.env`, both root-only), so later updates keep them without repeating the options.
 
 Useful commands afterwards:
 
 ```bash
-systemctl status ai-greek-subs-fletouris       # is it running?
-journalctl -u ai-greek-subs-fletouris -f       # live logs
-sudo systemctl restart ai-greek-subs-fletouris # restart
+systemctl status aio-streams-subtitles-greek       # is it running?
+journalctl -u aio-streams-subtitles-greek -f       # live logs
+sudo systemctl restart aio-streams-subtitles-greek # restart
 ```
 
 ---
+
+### The bundled AIOStreams
+
+Unless you pass `--no-aiostreams`, the installer also sets up AIOStreams (64-bit systems only — amd64 / arm64):
+
+1. Installs **Docker** if it's missing (official `get.docker.com` script).
+2. Creates `/opt/aiostreams` with `compose.yaml` and `.env`: the public base URL, a random **SECRET_KEY** (encrypts your saved AIOStreams configurations — never change it), SQLite storage in `/opt/aiostreams/data`, and a **login** (`AIOSTREAMS_AUTH`, printed once at the end).
+3. Runs the official `ghcr.io/viren070/aiostreams` image, reachable only through nginx, on **`https://<your-ip>.local-ip.sh:8444`** (and the public address when outside access is on).
+4. Installs `sudo aiostreams-update` and runs it **weekly** (pulls the newest image, keeps everything else).
+
+An existing `/opt/aiostreams` is kept as it is (secret key, login, configurations); updates only follow address changes. On first start AIOStreams downloads its title databases, which takes a minute or two.
+
+**Set it up:** open the AIOStreams address, sign in, add your debrid service (its API key), choose stream addons and filters — or import a configuration exported from another instance (keys are not included in exports; enter them again). Some features (title / year matching, digital-release filter) need a free [TMDB](https://www.themoviedb.org/settings/api) **API Read Access Token**. Then add your subtitle addon: on the subtitle configure page click **Generate install link**, copy the manifest URL, and in AIOStreams add it under **Addons → Custom addon**. Save, then **Install** — Stremio needs only AIOStreams.
+
+**Change the login:** edit `AIOSTREAMS_AUTH=user:password` in `/opt/aiostreams/.env`, then `sudo aiostreams-update`.
 
 ## Option B — from a git clone
 
 Same result as Option A, using the repository directly:
 
 ```bash
-git clone https://github.com/jfle/ai-greek-subs-fletouris.git
-cd ai-greek-subs-fletouris
+git clone https://github.com/jfle/aio-streams-subtitles-greek.git
+cd aio-streams-subtitles-greek
 sudo ./install.sh            # accepts the same options as the installer
 ```
 
@@ -94,14 +115,14 @@ Works on any machine with Docker (Linux, Synology/QNAP, Unraid, Windows/macOS wi
 ```bash
 docker run -d --name ai-greek-subs --restart unless-stopped \
   -p 7000:7000 -v "$PWD/data:/data" \
-  ghcr.io/jfle/ai-greek-subs-fletouris:latest
+  ghcr.io/jfle/aio-streams-subtitles-greek:latest
 ```
 
 **Or build it yourself** with the included `docker-compose.yml`:
 
 ```bash
-git clone https://github.com/jfle/ai-greek-subs-fletouris.git
-cd ai-greek-subs-fletouris
+git clone https://github.com/jfle/aio-streams-subtitles-greek.git
+cd aio-streams-subtitles-greek
 docker compose up -d --build
 ```
 
@@ -155,11 +176,11 @@ To use the addon away from home (phone on mobile data, a hotel, a friend's TV), 
 **With a static (or rarely changing) public IP — no domain needed:**
 
 ```bash
-sudo bash ai-greek-subs-fletouris-installer.sh --public-ip auto --public-port 8443
+sudo bash aio-streams-subtitles-greek-installer.sh --public-ip auto --public-port 8443
 ```
 
 1. The installer detects your public IP (or give it: `--public-ip 194.0.2.10`) and adds `https://<your-public-ip>.local-ip.sh:8443` — the same free wildcard certificate covers it, because `194-0-2-10.local-ip.sh` simply resolves to `194.0.2.10`.
-2. **On your router, forward TCP port 8443 to the server's LAN IP, port 443** (often called *port forwarding*, *virtual server* or *NAT rules*). Use any free external port; 8443 avoids clashing with a router's own remote-admin page on 443.
+2. **On your router, forward TCP port 8443 to the server's LAN IP, port 443** — and, for AIOStreams, **TCP 8444 to the server's LAN IP, port 8444** (often called *port forwarding*, *virtual server* or *NAT rules*). Use any free external port; 8443 avoids clashing with a router's own remote-admin page on 443.
 3. Because the configuration page becomes reachable from the internet, the installer **sets a configuration password** (printed at the end; change it with `--password`). Wrong passwords are slowed down and an address is locked out for 15 minutes after 10 attempts. Without a password, the server refuses configuration requests that arrive through the external address.
 4. Open the configure page, generate the install link and choose **Anywhere**. That link works at home and away.
 
@@ -170,14 +191,14 @@ If your public IP changes, re-run the installer (with no options — it re-detec
 **With your own domain or a tunnel:**
 
 ```bash
-sudo bash ai-greek-subs-fletouris-installer.sh --public-url https://subs.example.com
+sudo bash aio-streams-subtitles-greek-installer.sh --public-url https://subs.example.com
 ```
 
 The domain must provide HTTPS itself — Cloudflare Tunnel, Tailscale Funnel, or Caddy/another reverse proxy forwarding to the server (see the sections below). The installer adds it as the external address and sets a password, just like `--public-ip`.
 
 **Docker / manual:** set `EXTERNAL_URL=https://…` and `CONFIG_PASSWORD=…` in the environment.
 
-To switch outside access off again: `sudo bash ai-greek-subs-fletouris-installer.sh --no-public`, then remove the router's port forward.
+To switch outside access off again: `sudo bash aio-streams-subtitles-greek-installer.sh --no-public`, then remove the router's port forward.
 
 ### local-ip.sh (installer default)
 
@@ -191,7 +212,7 @@ Nothing to do — the installer configures nginx with the public `*.local-ip.sh`
 sudo tailscale serve --bg 7000
 ```
 
-Your addon is now at `https://<machine>.<tailnet>.ts.net`. Install with `--https none`, set `PUBLIC_URL` to that address (`sudo systemctl edit ai-greek-subs-fletouris` → `[Service]` `Environment=PUBLIC_URL=https://…`), restart, and generate the install link from `https://<machine>.<tailnet>.ts.net/configure`. Every device that runs Stremio must be on your tailnet.
+Your addon is now at `https://<machine>.<tailnet>.ts.net`. Install with `--https none`, set `PUBLIC_URL` to that address (`sudo systemctl edit aio-streams-subtitles-greek` → `[Service]` `Environment=PUBLIC_URL=https://…`), restart, and generate the install link from `https://<machine>.<tailnet>.ts.net/configure`. Every device that runs Stremio must be on your tailnet.
 
 ### Cloudflare Tunnel
 
@@ -308,7 +329,7 @@ Configure page → **Custom OpenAI-compatible** → Base URL `http://<pc-ip>:114
 
 ## Environment variables
 
-Set them in the systemd unit (`sudo systemctl edit ai-greek-subs-fletouris`, then `[Service]` / `Environment=NAME=value`), in `docker-compose.yml`, or in your shell. See also [`.env.example`](.env.example).
+Set them in the systemd unit (`sudo systemctl edit aio-streams-subtitles-greek`, then `[Service]` / `Environment=NAME=value`), in `docker-compose.yml`, or in your shell. See also [`.env.example`](.env.example).
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -332,22 +353,22 @@ Server endpoints for monitoring: `GET /health` (version), `GET /status` (running
 
 **Update**
 
-- Installer: download the newest `ai-greek-subs-fletouris-installer.sh` and run it again — settings, sign-ins and cache are kept, and existing Stremio install links keep working.
+- Installer: download the newest `aio-streams-subtitles-greek-installer.sh` and run it again — settings, sign-ins and cache are kept, and existing Stremio install links keep working.
 - Git: `git pull && sudo ./install.sh`
-- Docker: `docker pull ghcr.io/jfle/ai-greek-subs-fletouris:latest` and recreate the container, or `git pull && docker compose up -d --build`.
+- Docker: `docker pull ghcr.io/jfle/aio-streams-subtitles-greek:latest` and recreate the container, or `git pull && docker compose up -d --build`.
 
 If a release note says the addon's *features* changed (new manifest resources), reinstall the addon once from its ⚙ Configure page so Stremio reads the new manifest.
 
-**Back up** the data folder — `/opt/ai-greek-subs-fletouris/data` (installer), `./data` (manual/Docker). The important file is `secret.key`: without it, existing install links stop working and you'd have to configure and install again.
+**Back up** the data folder — `/opt/aio-streams-subtitles-greek/data` (installer), `./data` (manual/Docker). The important file is `secret.key`: without it, existing install links stop working and you'd have to configure and install again.
 
 **Uninstall**
 
 ```bash
-sudo bash ai-greek-subs-fletouris-installer.sh --uninstall           # keeps data
-sudo bash ai-greek-subs-fletouris-installer.sh --uninstall --purge   # removes everything
+sudo bash aio-streams-subtitles-greek-installer.sh --uninstall           # keeps data
+sudo bash aio-streams-subtitles-greek-installer.sh --uninstall --purge   # removes everything
 ```
 
-Then remove the addon in Stremio (**Add-ons → AI-Greek-Subs-Fletouris → Uninstall**). Revoke sign-ins on the provider side if you like (ChatGPT settings, x.ai account, OpenRouter keys).
+Then remove the addon in Stremio (**Add-ons → AIO-Streams&Subtitles-Greek → Uninstall**). Revoke sign-ins on the provider side if you like (ChatGPT settings, x.ai account, OpenRouter keys).
 
 ---
 
@@ -369,9 +390,11 @@ Then remove the addon in Stremio (**Add-ons → AI-Greek-Subs-Fletouris → Unin
 | LM Studio: model doesn't load / times out | Make sure *Serve on Local Network* is on, the Base URL uses the PC's LAN IP, and the model fits in VRAM. Load it once with `lms load … --parallel 4`. |
 | The **Anywhere** link doesn't work away from home | Check the router's port forward (external port → server LAN IP, port 443) and that your public IP hasn't changed (`curl https://api.ipify.org` on the server). Some mobile/ISP networks use CGNAT — then a public IP isn't reachable and you need a tunnel (`--public-url`). |
 | The **Anywhere** link doesn't work at home | Your router lacks NAT loopback — use the **Home network only** link at home, or enable NAT loopback. |
-| "Too many wrong passwords" | Wait 15 minutes; the lockout is per address. The password is in `/etc/ai-greek-subs-fletouris.env`. |
+| "Too many wrong passwords" | Wait 15 minutes; the lockout is per address. The password is in `/etc/aio-streams-subtitles-greek.env`. |
+| AIOStreams says "missing API key" when saving | An imported configuration has services or features enabled without their keys: enter your debrid API key, and either a TMDB access token or switch off title matching, year matching and the digital-release filter. The reason is in `docker logs aiostreams`. |
+| AIOStreams page doesn't load | `docker ps` should show `aiostreams` as healthy; first start takes a minute or two. Logs: `docker logs -f aiostreams`. Outside access needs the router forward for 8444. |
 | Port 7000 already in use | The installer picks the next free port automatically; for manual runs set `PORT`. |
 
-Logs: `journalctl -u ai-greek-subs-fletouris -f` (installer), `docker logs -f ai-greek-subs` (Docker), or the terminal (manual). Each translation logs lines like `[start]`, `[serve] … translating 47%`, `[done] … 1010 cues, 0 failed, 56.5s`.
+Logs: `journalctl -u aio-streams-subtitles-greek -f` (installer), `docker logs -f aiostreams` (AIOStreams), `docker logs -f ai-greek-subs` (Docker), or the terminal (manual). Each translation logs lines like `[start]`, `[serve] … translating 47%`, `[done] … 1010 cues, 0 failed, 56.5s`.
 
-Still stuck? [Open an issue](https://github.com/jfle/ai-greek-subs-fletouris/issues/new/choose) with the log lines (remove anything personal).
+Still stuck? [Open an issue](https://github.com/jfle/aio-streams-subtitles-greek/issues/new/choose) with the log lines (remove anything personal).
