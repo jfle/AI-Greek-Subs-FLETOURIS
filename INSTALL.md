@@ -10,6 +10,10 @@ sudo bash install.sh
 
 The installer starts the `polycue-ai` systemd service, stores the app under `/opt/polycue-ai`, and prints its HTTPS configuration address. Use `--https none` for HTTP behind your own reverse proxy and `--public-url https://subs.example.com` for the proxy's external address. Run `bash install.sh --help` for options.
 
+## Find the configuration URL and password
+
+On the Pi or other systemd host, run `sudo polycue-config` to print your configuration URL and current configuration password. If external access was configured, it prints that URL too. The command requires root because the password is stored in a root-only file.
+
 ## Choose your language and backup
 
 1. Open **/configure** and choose **Language to show in Stremio**.

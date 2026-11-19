@@ -30,17 +30,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Lint shell scripts
-        run: shellcheck -S warning install.sh build-installer.sh
+        run: shellcheck -S warning install.sh build-installer.sh polycue-config
       - name: Build single-file installer
         run: bash build-installer.sh
       - name: Verify standalone installer and preserve a pre-existing AIOStreams installation
         run: |
           sudo mkdir -p /opt/aiostreams
           printf 'preserve-me\n' | sudo tee /opt/aiostreams/compose.yaml
-          sudo bash dist/polycue-ai-installer.sh --https none
+          sudo bash dist/polycue-ai-installer.sh --https none --password ci-fixture-password
           curl -fsS http://127.0.0.1:7000/health
           curl -fsS http://127.0.0.1:7000/manifest.json | grep -F 'PolyCue AI'
+          sudo polycue-config | grep -E '^Configuration page: http://[^ ]+:7000/configure$'
+          sudo polycue-config | grep -Fx 'Configuration password: ci-fixture-password'
           sudo bash dist/polycue-ai-installer.sh --uninstall --purge
+          test ! -e /usr/local/bin/polycue-config
           sudo grep -Fx 'preserve-me' /opt/aiostreams/compose.yaml
       - uses: actions/upload-artifact@v4
         with:

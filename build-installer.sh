@@ -7,7 +7,7 @@ VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' package.json | head -1)
 mkdir -p dist
 STAGE=$(mktemp -d)
 mkdir "$STAGE/polycue-ai"
-cp -r server.js package.json src public README.md INSTALL.md LICENSE install.sh Dockerfile docker-compose.yml "$STAGE/polycue-ai/"
+cp -r server.js package.json src public README.md INSTALL.md LICENSE install.sh polycue-config Dockerfile docker-compose.yml "$STAGE/polycue-ai/"
 chmod +x "$STAGE/polycue-ai/install.sh"
 tar -C "$STAGE" -czf "$STAGE/payload.tgz" polycue-ai
 OUT=dist/polycue-ai-installer.sh

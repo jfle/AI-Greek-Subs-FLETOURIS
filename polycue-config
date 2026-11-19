@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $EUID -ne 0 ]]; then
+  printf 'Run as root: sudo polycue-config\n' >&2
+  exit 1
+fi
+
+envfile=/etc/polycue-ai.env
+if [[ ! -r "$envfile" ]]; then
+  printf 'PolyCue AI settings were not found at %s.\n' "$envfile" >&2
+  exit 1
+fi
+
+read_setting() {
+  local value
+  value=$(sed -n "s/^$1=//p" "$envfile" | tail -n 1)
+  case "$value" in
+    \"*\") value=${value:1:${#value}-2} ;;
+    \'*\') value=${value:1:${#value}-2} ;;
+  esac
+  printf '%s' "$value"
+}
+
+unit_env=$(systemctl show --property=Environment --value polycue-ai.service)
+home_url=$(read_setting PUBLIC_URL)
+if [[ -z "$home_url" ]]; then
+  home_url=$(sed -nE 's/(^|.* )PUBLIC_URL=([^ ]*).*/\2/p' <<< "$unit_env")
+fi
+if [[ -z "$home_url" ]]; then
+  port=$(read_setting PORT)
+  if [[ -z "$port" ]]; then
+    port=$(sed -nE 's/(^|.* )PORT=([0-9]+).*/\2/p' <<< "$unit_env")
+  fi
+  address=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -nE 's/.* src ([0-9.]+).*/\1/p' || true)
+  if [[ -z "$address" ]]; then
+    address=$(hostname -I | awk '{print $1}')
+  fi
+  if [[ "$address" == *:* ]]; then address="[$address]"; fi
+  home_url="http://${address:-localhost}:${port:-7000}"
+fi
+
+external_url=$(read_setting EXTERNAL_URL)
+password=$(read_setting CONFIG_PASSWORD)
+printf 'Configuration page: %s/configure\n' "${home_url%/}"
+if [[ -n "$external_url" && "${external_url%/}" != "${home_url%/}" ]]; then
+  printf 'Outside your network: %s/configure\n' "${external_url%/}"
+fi
+printf 'Configuration password: %s\n' "${password:-Not set}"

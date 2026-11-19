@@ -78,7 +78,7 @@ echo
 if [[ $UNINSTALL -eq 1 ]]; then
   step "Removing $NAME"
   systemctl disable --now "$APP" 2>/dev/null || true
-  rm -f "/etc/systemd/system/$APP.service"
+  rm -f "/etc/systemd/system/$APP.service" /usr/local/bin/polycue-config
   systemctl daemon-reload
   rm -f "/etc/nginx/sites-enabled/$APP" "/etc/nginx/sites-available/$APP"
   command -v nginx >/dev/null && nginx -t -q 2>/dev/null && systemctl reload nginx || true
@@ -291,6 +291,7 @@ systemctl restart "$APP"
 for _ in $(seq 1 20); do curl -fsS -m 2 "http://127.0.0.1:$PORT/health" >/dev/null 2>&1 && break; sleep 0.5; done
 curl -fsS -m 2 "http://127.0.0.1:$PORT/health" >/dev/null || die "Service did not start. Check: journalctl -u $APP -e"
 ok "Service running (v$VERSION, port $PORT)"
+install -o root -g root -m 755 "$SRC/polycue-config" /usr/local/bin/polycue-config
 
 URL="${PUBLIC_URL:-http://$LAN_IP:$PORT}"
 echo
@@ -317,6 +318,7 @@ if [[ -n "$CONFIG_PASSWORD" ]]; then
   else echo "   The configuration page is password protected (change with --password)"; fi
 fi
 echo
+echo "   Config URL and password: sudo polycue-config"
 echo "   Logs:    journalctl -u $APP -f"
 echo "   Update:  run the newer installer the same way (settings are kept)"
 echo "   Remove:  sudo $DIR/install.sh --uninstall   (add --purge to delete PolyCue AI data)"
