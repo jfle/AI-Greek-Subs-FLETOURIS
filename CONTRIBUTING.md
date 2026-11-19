@@ -31,7 +31,9 @@ Stremio accepts `http://127.0.0.1:7000/<token>/manifest.json` from the same comp
 | `src/providers.js` | Provider adapters and model listing |
 | `src/auth.js` | Sign-in flows and the server-side credential store |
 | `src/config.js` | Encrypted per-user configuration, automatic limits |
-| `src/subtitles.js` | SRT/VTT parsing and output, character-set detection |
+| `src/select.js` | Chooses and verifies the English subtitle for a video, decides on reuse + retiming |
+| `src/sync.js` | Release fingerprint, wrong-type rejection, length check, frame-rate detection, alignment |
+| `src/subtitles.js` | SRT/VTT/ASS/SSA/MicroDVD parsing and SRT output, character-set detection |
 | `public/configure.html` | The configuration page (plain HTML/JS, no build step) |
 | `install.sh`, `build-installer.sh` | Debian installer and the single-file installer builder |
 | `test/` | `node:test` suites and mock servers |

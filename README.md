@@ -30,7 +30,7 @@ Greek is the default; 17 other target languages are available on the configurati
 - **Or run it 100% locally** with LM Studio, Ollama, vLLM or any OpenAI-compatible server (e.g. the Greek-tuned *Llama-Krikri-8B*).
 - **Fast:** starts translating as soon as you *open* a title, sends many requests in parallel and does the opening minutes first. A 1,000-line episode takes about **1 minute** on a ChatGPT plan.
 - **Binge-friendly:** while you watch an episode, the **next episode** is translated in the background, so it starts fully in Greek.
-- **Smart matching:** asks your English subtitle sources (OpenSubtitles v3 by default) for the subtitle that matches your exact release (video hash and filename).
+- **The right subtitle, in sync:** matches your exact release (OpenSubtitles hash, release group, source, edition), rejects wrong types (CD parts, forced-only, wrong episode, not English), checks the length, detects **frame-rate** differences (23.976 / 24 / 25 / 29.97 fps) and **aligns** the timing to the best-matching English subtitle — even across different cuts. See [Subtitle matching & sync](#subtitle-matching--sync).
 - **Cached:** finished translations are kept on disk for 30 days. Re-watching costs nothing.
 - **Private:** your settings are encrypted inside your personal addon link; sign-ins stay on your server.
 - **Zero npm dependencies**, one small Node.js process, a one-file installer for Debian / Ubuntu / Raspberry Pi OS / Armbian.
@@ -80,6 +80,23 @@ sequenceDiagram
 
 > **Why does the addon fetch the English subtitle itself?** Stremio never tells an addon which subtitle you picked or what other addons returned. So the addon asks the same sources, ranked the same way, which almost always gives the same file. If you use another English subtitle addon, add its URL under **Advanced → English subtitle sources**.
 
+## Subtitle matching & sync
+
+An AI translation is only as good as the English subtitle it starts from — if that file belongs to another release, the Greek one is out of sync too. So every subtitle goes through four layers of checks (on by default, *Translation → Check that the subtitle matches your video*):
+
+| Layer | What it does | Catches |
+|---|---|---|
+| **1. Fingerprint + type** | Prefers an OpenSubtitles **hash match** for your exact file, then compares release **group, source** (WEB / Blu-ray / HDTV / DVD), **streaming service** and **edition** (Extended, Director's Cut…) with the video's filename. Rejects **CD1/CD2** splits, **forced-only** files, the **wrong season/episode**, episode subtitles on a movie, and files that aren't actually English. | Wrong release, wrong cut, wrong file type |
+| **2. Length check** | Compares how long each subtitle runs with the reference subtitle and with the **runtime** from Stremio's catalog. Without a fingerprint, picks the subtitle whose length agrees with the others. | Partial files, other cuts, odd releases |
+| **3. Frame rate** | Recognises the **23.976 / 24 / 25 / 29.97 / 30 fps** ratios (e.g. a PAL 25 fps subtitle on a 23.976 fps video drifts 4 % — about 4 minutes by the end of a film) and rescales. | Slowly drifting subtitles |
+| **4. Alignment** | Retimes against the best-matching **English reference** using lines both files share as anchors — a constant offset, a frame-rate change, or **elastic per-scene corrections** when scenes were cut (recaps, ads, alternate edits). Falls back to matching cue timing patterns when the wording differs. This also lets the addon **reuse** an existing translation of another release, retimed, instead of translating again. | Offsets, drift, different cuts |
+
+If a subtitle was retimed you see a short note at the start (e.g. *⏱ Ο συγχρονισμός διορθώθηκε αυτόματα (25 → 23,976 fps)*). If nothing could confirm the release, the note says so and points to the **player's own timing control** — the subtitles menu (**CC** button or **S** key) → **Delay** — which handles any remaining constant offset.
+
+> **Why not align to the embedded subtitles?** Stremio never gives subtitle addons the video or its embedded tracks — only the file's hash, size and name. The reference is therefore the English subtitle that best matches your release (ideally a hash match, which was made from that exact file).
+
+**Why was this subtitle chosen?** Open `https://<your-server>/<your-addon-token>/report/<movie|series>/<id>.json` (the same address as your addon link, with `report/movie/tt0133093.json` instead of `manifest.json`; for an episode: `report/series/tt0944947:1:1.json`). It lists every candidate with its score, reasons, length verdict and why it was accepted or rejected.
+
 ## AI providers
 
 | Provider | Sign-in | Notes |
@@ -125,6 +142,7 @@ See **[SECURITY.md](SECURITY.md)** for details and how to report a vulnerability
 |---|---|
 | Stremio says **"manifest error"** / can't install | Stremio needs **HTTPS**. Use the installer's `https://…local-ip.sh` address, or see [INSTALL.md → HTTPS](INSTALL.md#https). |
 | Subtitles are **in English** | The translation is still running → subtitles **OFF and ON**. If it never changes, open `/status` on your server and check the logs. |
+| Subtitles are **out of sync** | Usually no subtitle exists for your exact release (the note at the start says so). Use the player's **subtitles menu → Delay** for a constant offset, or try another stream. The [report](#subtitle-matching--sync) shows what was found. |
 | **No Greek track** at all | No English subtitle was found for that title, or the addon isn't installed in this Stremio account. |
 | "HTTP 429" / rate limit | Lower **Advanced → Parallel requests**. The addon retries automatically. |
 | "Sign-in has expired" | Open the configure page from Stremio (⚙ on the addon) and sign in again. |
@@ -137,9 +155,11 @@ More in [INSTALL.md → Troubleshooting](INSTALL.md#troubleshooting).
 server.js            HTTP server: Stremio addon routes, configure page, sign-in API
 src/providers.js     AI provider adapters (OpenAI-compatible, Anthropic, Gemini, ChatGPT plan, Grok plan)
 src/translator.js    translation jobs: batching, parallel scheduling, partial results, cache
+src/select.js        chooses the English subtitle for the video (scoring, verification, reuse)
+src/sync.js          fingerprint, length, frame-rate and alignment checks
 src/auth.js          sign-in flows (OpenRouter PKCE, Sign in with ChatGPT, Sign in with Grok device code)
 src/config.js        encrypted per-user configuration inside the addon URL
-src/subtitles.js     SRT / VTT parsing and writing, encoding detection
+src/subtitles.js     SRT / VTT / ASS / SSA / MicroDVD parsing, SRT writing, encoding detection
 public/              configuration page, logo, background
 install.sh           installer / updater / uninstaller for Debian-based hosts
 build-installer.sh   builds the single-file installer (dist/)

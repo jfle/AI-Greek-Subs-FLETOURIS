@@ -200,6 +200,8 @@ Then click **Load models**, choose a model from the list and click **Test transl
 | Start translating as soon as a video starts | on | Pre-translates the best-matching subtitle |
 | Start translating as soon as you open a movie or episode | on | Head start while you pick a stream (uses Stremio's stream request) |
 | Translate the next episode in the background | on | The next episode then starts fully in Greek |
+| Check that the subtitle matches your video, and fix its timing | on | Release fingerprint, wrong-type rejection, length check, frame-rate detection and alignment — see [README → Subtitle matching & sync](README.md#subtitle-matching--sync) |
+| Show a short note when the timing was corrected or couldn't be verified | on | A 4-second note at the start of the subtitle |
 | Show remaining lines in English while translating | on | Otherwise only the translated part is shown |
 
 ### 3. Advanced
@@ -280,7 +282,7 @@ Set them in the systemd unit (`sudo systemctl edit ai-greek-subs-fletouris`, the
 
 Advanced / testing only: `OPENAI_API_URL`, `OPENAI_AUTH_URL`, `OPENAI_ISSUER`, `OPENROUTER_URL`, `XAI_AUTH_URL`, `XAI_OAUTH_API_URL`, `XAI_OAUTH_PROXY_URL` override provider endpoints (used by the test suite's mock servers).
 
-Server endpoints for monitoring: `GET /health` (version), `GET /status` (running and finished translation jobs).
+Server endpoints for monitoring: `GET /health` (version), `GET /status` (running and finished translation jobs), `GET /<addon token>/report/<type>/<id>.json` (how the subtitle for a title was chosen and verified). `CINEMETA_URL` overrides the catalog used for runtimes.
 
 ---
 
@@ -315,6 +317,8 @@ Then remove the addon in Stremio (**Add-ons → AI-Greek-Subs-Fletouris → Unin
 | `https://<ip>.local-ip.sh` doesn't open | Your router/DNS blocks DNS rebinding — allow `local-ip.sh`, or use Tailscale / Cloudflare (see [HTTPS](#https)). Also check the server's IP didn't change (give it a fixed DHCP lease). |
 | Subtitles show **in English** with `[⏳ …]` tags | The translation is still running. Turn subtitles **OFF and back ON** to load the translated part. Check `/status` for progress. |
 | Subtitles stay English, no `⏳` tag | The first line of the file says why (e.g. *AI translation failed: …*). Common causes: expired sign-in, invalid key, model not available. Open the configure page, **Test translation**, fix and reinstall. |
+| Subtitles are **out of sync** | Most often no English subtitle exists for your exact release; the note at the start then says *No subtitle found for this exact release*. Fix a constant offset with the player's **subtitles menu (CC button or S key) → Delay**, or pick another stream (a common release such as a WEB-DL usually has a hash-matched subtitle). Check what was found with the report: replace `manifest.json` in your addon link with `report/movie/<imdb id>.json` or `report/series/<imdb id>:<season>:<episode>.json`. |
+| A subtitle **drifts** further off over time | A frame-rate mismatch. The addon rescales automatically when it has a reference subtitle to compare with; if it says the release couldn't be verified, try another stream. |
 | No **Greek** track in the menu | No English subtitle exists for that title in your sources, or the addon isn't installed in this Stremio account / profile. |
 | Translation is slow | Use a faster model (luna / non-reasoning / Flash / mini) and leave *Parallel requests* on auto. For local models raise `--parallel` in LM Studio and the matching setting here. |
 | HTTP **429** / rate limit errors | Lower **Advanced → Parallel requests** (e.g. 8 → 4). |

@@ -2,6 +2,19 @@
 
 All notable changes to this project. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org).
 
+## [1.8.0] — 2026-11-19
+
+### Added
+- **Subtitle matching & sync checks** (on by default):
+  1. **Fingerprint + type:** OpenSubtitles hash match first, then release group / source / streaming service / edition compared with the video filename. Rejects CD-split, forced-only, wrong-season/episode, episode-on-movie and non-English files.
+  2. **Length check** against the reference subtitle and the runtime from Cinemeta; without a fingerprint, the subtitle whose length agrees with the others wins.
+  3. **Frame-rate detection** (23.976 / 24 / 25 / 29.97 / 30 fps) with automatic rescaling.
+  4. **Alignment** to the best-matching English reference: shared lines as anchors, global or elastic per-scene corrections across different cuts, timing-pattern fallback when the wording differs.
+- An existing translation of another release is **reused and retimed** instead of translated again (e.g. a title opened before the stream was chosen).
+- Short on-screen note when timing was corrected, or when the release couldn't be verified (pointing to the player's *subtitles menu → Delay*).
+- `/<token>/report/<type>/<id>.json` explains which subtitle was chosen and why.
+- Reads **ASS/SSA** and **MicroDVD** subtitles (MicroDVD frame numbers use the source's frame rate).
+
 ## [1.7.1] — 2026-11-18
 
 ### Fixed
@@ -57,6 +70,7 @@ Early development.
 - Works within Stremio's ~10 s subtitle timeout: partial results, priority scheduling of the track being watched, opening lines first.
 - One Greek track per title, next-episode prefetch, reuse of already translated subtitles, 30-day cache.
 
+[1.8.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.8.0
 [1.7.1]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.7.1
 [1.7.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.7.0
 [1.6.0]: https://github.com/jfle/ai-greek-subs-fletouris/releases/tag/v1.6.0

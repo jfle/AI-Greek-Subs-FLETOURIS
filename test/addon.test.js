@@ -65,8 +65,10 @@ test('opening a title starts translation early; the subtitle request reuses it',
   assert.equal(subs.body.subtitles.length, 1);
   const track = subs.body.subtitles[0];
   assert.equal(track.lang, 'ell');
-  const src = Buffer.from(track.url.split('/t/')[1].split('/')[0], 'base64url').toString();
-  assert.match(src, /tt0000001_1_2-popular\.srt$/);
+  const payload = JSON.parse(Buffer.from(track.url.split('/t/')[1].split('/')[0], 'base64url').toString());
+  assert.match(payload.s, /tt0000001_1_2-popular\.srt$/);
+  assert.equal(payload.q, 'hash', 'the hash-matched subtitle is the timing reference');
+  assert.equal(payload.r, undefined, 'same timing, so no retiming is needed');
 
   const t0 = Date.now();
   const srt = await (await fetch(track.url)).text();

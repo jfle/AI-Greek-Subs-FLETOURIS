@@ -7,10 +7,24 @@
 const http = require('http');
 const crypto = require('crypto');
 
-function makeSrt(lines) {
-  const t = (s) => `00:${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')},000`;
+const PHRASES = ['you know what I mean, right?', 'I think we have to go now.', 'what is that? Is it yours?', 'we can do this, just trust me.', 'he was here a minute ago.', 'come on, get in the car!', 'are you okay? Talk to me.', "I don't know what to say."];
+
+// A subtitle with `lines` cues every ~3 s. Variants (by file name) model real-world problems:
+//   -shift   +3 s late          -fps   made for 25 fps (times × 23.976/25)
+//   -cd1     first half only    -forced 10 lines only      -fr   French text
+function makeSrt(lines, variant = '') {
+  const fmt = (ms) => {
+    const p = (n, w = 2) => String(n).padStart(w, '0');
+    return `${p(Math.floor(ms / 3600000))}:${p(Math.floor(ms / 60000) % 60)}:${p(Math.floor(ms / 1000) % 60)},${p(ms % 1000, 3)}`;
+  };
+  const map = (t) => (variant.includes('-shift') ? t + 3000 : variant.includes('-fps') ? Math.round((t * 23.976) / 25) : t);
+  const n = variant.includes('-cd1') ? Math.floor(lines / 2) : variant.includes('-forced') ? 10 : lines;
   let out = '';
-  for (let i = 0; i < lines; i++) out += `${i + 1}\n${t(i * 3)} --> ${t(i * 3 + 2)}\nLine ${i}\n\n`;
+  for (let i = 0; i < n; i++) {
+    const t = 1000 + i * 3000;
+    const text = variant.includes('-fr') ? `Ligne ${i} : je ne sais pas quoi dire, mon ami.` : `Line ${i}: ${PHRASES[i % PHRASES.length]}`;
+    out += `${i + 1}\n${fmt(map(t))} --> ${fmt(map(t + 2000))}\n${text}\n\n`;
+  }
   return out;
 }
 
@@ -26,12 +40,14 @@ function startMockProviders({ lines = 120, llmDelayMs = 30 } = {}) {
     return `${h}.${p}.${crypto.sign('RSA-SHA256', Buffer.from(`${h}.${p}`), privateKey).toString('base64url')}`;
   };
 
-  const srt = makeSrt(lines);
+  // Per-title source listings can be overridden by tests: state.listings[id] = [{ file, m, release, group, fps, season, episode }]
   const codes = new Map();
   const state = {
     requests: [],
     chatCalls: 0,
     xaiPolls: 0,
+    listings: {},
+    runtimeMin: null,
     xaiApiDenied: true, // api.x.ai refuses sign-in tokens -> addon must fall back to the proxy endpoint
     xaiProxyDenied: false,
     refreshCount: 0,
@@ -49,12 +65,18 @@ function startMockProviders({ lines = 120, llmDelayMs = 30 } = {}) {
 
       // ---- Stremio subtitle source (OpenSubtitles-like) ----
       if ((m = p.match(/^\/subtitles\/(series|movie)\/([^/]+?)(?:\/([^/]+))?\.json$/))) {
-        const id = decodeURIComponent(m[2]).replace(/[^\w]/g, '_');
-        const names = m[3] ? [`${id}-hashmatch`, `${id}-popular`, `${id}-other`] : [`${id}-popular`, `${id}-hashmatch`, `${id}-other`];
+        const rawId = decodeURIComponent(m[2]);
+        const id = rawId.replace(/[^\w]/g, '_');
         const base = `http://127.0.0.1:${server.address().port}`;
-        return json(200, { subtitles: [...names.map((n) => ({ url: `${base}/files/${n}.srt`, lang: 'eng' })), { url: `${base}/files/${id}-fr.srt`, lang: 'fre' }] });
+        const custom = state.listings[rawId];
+        if (custom) {
+          return json(200, { subtitles: custom.map((c) => ({ url: `${base}/files/${id}${c.file}.srt`, lang: c.lang || 'eng', m: c.m || 'i', subtitleFileName: c.release ? `${c.release}.srt` : `${id}${c.file}.srt`, movieReleaseName: c.release || '', releaseGroup: c.group || '', fpsMilli: c.fps || 23976, season: c.season || 0, episode: c.episode || 0 })) });
+        }
+        const names = m[3] ? [`${id}-hashmatch`, `${id}-popular`, `${id}-other`] : [`${id}-popular`, `${id}-hashmatch`, `${id}-other`];
+        return json(200, { subtitles: [...names.map((n) => ({ url: `${base}/files/${n}.srt`, lang: 'eng', m: m[3] && n.endsWith('-hashmatch') ? 'h' : 'i' })), { url: `${base}/files/${id}-fr.srt`, lang: 'fre' }] });
       }
-      if (p.startsWith('/files/')) { res.writeHead(200, { 'Content-Type': 'application/x-subrip' }); return res.end(srt); }
+      if (p.startsWith('/files/')) { res.writeHead(200, { 'Content-Type': 'application/x-subrip' }); return res.end(makeSrt(lines, p)); }
+      if ((m = p.match(/^\/meta\/(movie|series)\/(tt\d+)\.json$/))) return json(200, { meta: { id: m[2], runtime: state.runtimeMin ? `${state.runtimeMin} min` : undefined } });
 
       // ---- OpenAI-compatible LLM (custom provider / OpenRouter / API keys) ----
       if (p === '/v1/chat/completions') {

@@ -38,6 +38,8 @@ const DEFAULTS = {
   disableThinking: true,
   prefetchNext: true,
   earlyStart: true,
+  autoSync: true, // fingerprint / length / frame-rate / alignment checks (src/sync.js)
+  syncNotes: true, // short on-screen note when timing was corrected or couldn't be verified
   credId: '',
   instructions: '',
 };
@@ -78,6 +80,8 @@ function normalizeConfig(input = {}) {
   c.disableThinking = c.disableThinking === true || c.disableThinking === 'true' || c.disableThinking === 'on';
   c.prefetchNext = c.prefetchNext === true || c.prefetchNext === 'true' || c.prefetchNext === 'on';
   c.earlyStart = c.earlyStart === true || c.earlyStart === 'true' || c.earlyStart === 'on';
+  c.autoSync = c.autoSync === true || c.autoSync === 'true' || c.autoSync === 'on';
+  c.syncNotes = c.syncNotes === true || c.syncNotes === 'true' || c.syncNotes === 'on';
   c.credId = /^[\w-]{16,64}$/.test(String(c.credId || '')) ? String(c.credId) : '';
   if (!PROVIDERS[c.provider].auth) c.credId = '';
   c.instructions = String(c.instructions || '').slice(0, 1000);

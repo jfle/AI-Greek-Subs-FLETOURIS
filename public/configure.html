@@ -169,6 +169,8 @@
       <label class="check"><input type="checkbox" id="autoTranslate"> <span>Start translating the best-matching English subtitle as soon as a video starts<div class="hint">Recommended — the Greek track is usually ready by the time you choose it.</div></span></label>
       <label class="check"><input type="checkbox" id="earlyStart"> <span>Start translating as soon as you open a movie or episode, before you pick a stream<div class="hint">Gives the translation a head start, so playback usually begins fully in Greek.</div></span></label>
       <label class="check"><input type="checkbox" id="prefetchNext"> <span>While you watch a series, translate the next episode in the background<div class="hint">The next episode then starts fully in Greek.</div></span></label>
+      <label class="check"><input type="checkbox" id="autoSync"> <span>Check that the subtitle matches your video, and fix its timing automatically<div class="hint">Matches the release (OpenSubtitles hash, release group, source, edition), rejects wrong types (CD parts, forced-only, wrong episode, not English), checks the length, detects frame-rate differences and aligns timing to the best-matching English subtitle.</div></span></label>
+      <label class="check"><input type="checkbox" id="syncNotes"> <span>Show a short note at the start when the timing was corrected or couldn't be verified<div class="hint">If a subtitle is still off, use the player's own control: subtitles menu (CC) → Delay.</div></span></label>
       <label class="check"><input type="checkbox" id="showOriginalWhilePending"> <span>While a translation is still running, show the remaining lines in English (italics)</span></label>
     </section>
 
@@ -223,7 +225,7 @@
   const cfg = B.config || {};
   const defaults = {
     provider: 'openai', targetLang: 'ell', sources: ['https://opensubtitles-v3.strem.io'], maxCandidates: 1,
-    autoTranslate: true, batchSize: 0, concurrency: 0, earlyStart: true, temperature: 0.3, showOriginalWhilePending: true, disableThinking: true,
+    autoTranslate: true, batchSize: 0, concurrency: 0, earlyStart: true, autoSync: true, syncNotes: true, temperature: 0.3, showOriginalWhilePending: true, disableThinking: true,
     prefetchNext: true, instructions: '', credId: ''
   };
   let c = Object.assign({}, defaults, cfg);
@@ -329,6 +331,8 @@
   $('showOriginalWhilePending').checked = !!c.showOriginalWhilePending;
   $('prefetchNext').checked = c.prefetchNext !== false;
   $('earlyStart').checked = c.earlyStart !== false;
+  $('autoSync').checked = c.autoSync !== false;
+  $('syncNotes').checked = c.syncNotes !== false;
   $('gptRedirect').textContent = B.chatgptRedirect;
   $('disableThinking').checked = c.disableThinking !== false;
   $('sources').value = (c.sources || []).join('\n');
@@ -353,6 +357,8 @@
       showOriginalWhilePending: $('showOriginalWhilePending').checked,
       prefetchNext: $('prefetchNext').checked,
       earlyStart: $('earlyStart').checked,
+      autoSync: $('autoSync').checked,
+      syncNotes: $('syncNotes').checked,
       credId,
       disableThinking: $('disableThinking').checked,
       sources: $('sources').value.split(/\n+/).map((s) => s.trim()).filter(Boolean),

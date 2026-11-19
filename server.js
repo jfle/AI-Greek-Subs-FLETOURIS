@@ -6,7 +6,10 @@ const fs = require('fs');
 const path = require('path');
 const { PROVIDERS, LANGUAGES, listModels } = require('./src/providers');
 const { normalizeConfig, encodeConfig, decodeConfig, sign, b64url } = require('./src/config');
-const { getOrStartJob, renderJob, translateLines, status, openingReady, translationState, etaMs } = require('./src/translator');
+const { getOrStartJob, renderJob, translateLines, status, openingReady, etaMs } = require('./src/translator');
+const { selectSubtitles } = require('./src/select');
+const { alignmentFor, isNoop, retimeCues, describeFix } = require('./src/sync');
+const { parseSubtitles, toSrt } = require('./src/subtitles');
 const auth = require('./src/auth');
 
 const PORT = parseInt(process.env.PORT || '7000', 10);
@@ -98,38 +101,6 @@ function renderPage(cfg) {
   return PAGE.replace('/*__BOOT__*/', `window.__BOOT__ = ${json};`);
 }
 
-const isEnglish = (lang) => ['eng', 'en', 'english', 'en-us', 'en-gb'].includes(String(lang || '').toLowerCase());
-
-async function fetchSourceSubs(cfg, type, id, extra) {
-  const suffix = extra ? `/${extra}` : '';
-  const results = await Promise.all(
-    cfg.sources.map(async (base) => {
-      try {
-        const r = await fetch(`${base}/subtitles/${type}/${id}${suffix}.json`, { signal: AbortSignal.timeout(12000) });
-        if (!r.ok) return [];
-        const j = await r.json();
-        return Array.isArray(j.subtitles) ? j.subtitles : [];
-      } catch {
-        return [];
-      }
-    }),
-  );
-  const seen = new Set();
-  const out = [];
-  // Interleave sources so each configured addon contributes its best match first.
-  const maxLen = Math.max(0, ...results.map((r) => r.length));
-  for (let i = 0; i < maxLen; i++) {
-    for (const list of results) {
-      const s = list[i];
-      if (s && s.url && isEnglish(s.lang) && !seen.has(s.url)) {
-        seen.add(s.url);
-        out.push(s);
-      }
-    }
-  }
-  return out;
-}
-
 // Opening a title in Stremio (before a stream is picked): start translating its best English subtitle.
 const earlyStarted = new Map();
 async function handleStream(req, res, token, type, id) {
@@ -142,9 +113,9 @@ async function handleStream(req, res, token, type, id) {
   if (earlyStarted.has(key) && Date.now() - earlyStarted.get(key) < 600e3) return;
   earlyStarted.set(key, Date.now());
   try {
-    const subs = await fetchSourceSubs(cfg, type, id, '');
-    if (!subs[0]) return;
-    const job = getOrStartJob(subs[0].url, cfg);
+    const { tracks } = await selectSubtitles(cfg, type, id, '', { budgetMs: 5000 });
+    if (!tracks[0]) return;
+    const job = getOrStartJob(tracks[0].src, cfg);
     job.lastRequested = Math.max(job.lastRequested || 0, Date.now() - 1800e3);
     console.log(`[early] ${type} ${id} -> ${job.key} (${job.status})`);
   } catch (e) {
@@ -152,36 +123,56 @@ async function handleStream(req, res, token, type, id) {
   }
 }
 
+// The translated-track URL carries what to translate, the reference to retime to, and how well it matched.
+function trackPayload(t) {
+  return t.ref || t.q !== 'unverified' ? b64url(JSON.stringify({ s: t.src, r: t.ref || undefined, q: t.q })) : b64url(t.src);
+}
+function readPayload(src) {
+  const raw = Buffer.from(src, 'base64url').toString('utf8');
+  if (raw.startsWith('{')) {
+    try {
+      const p = JSON.parse(raw);
+      return { srcUrl: p.s, refUrl: p.r || null, quality: p.q || 'unverified' };
+    } catch { /* fall through */ }
+  }
+  return { srcUrl: raw, refUrl: null, quality: 'unverified' };
+}
+
 async function handleSubtitles(req, res, token, type, id, extra) {
   const cfg = decodeConfig(token);
   if (!cfg) return send(res, 200, { subtitles: [] });
-  let english = await fetchSourceSubs(cfg, type, id, extra);
-  // Prefer a near-top candidate that is already translated or in progress (e.g. a pre-translated next episode).
-  const ready = english.slice(0, 3).findIndex((s) => translationState(s.url, cfg) !== 'none');
-  if (ready > 0) english.unshift(english.splice(ready, 1)[0]);
-  english = english.slice(0, cfg.maxCandidates);
+  const { tracks, report } = await selectSubtitles(cfg, type, id, extra);
   const base = baseUrl(req);
-  const subtitles = english.map((s, i) => {
-    const src = b64url(s.url);
+  const subtitles = tracks.map((t, i) => {
+    const src = trackPayload(t);
     return {
       id: `ai-${cfg.targetLang}-${i + 1}-${sign(src).slice(0, 8)}`,
       url: `${base}/${token}/t/${src}/${sign(src)}.srt`,
       lang: cfg.targetLang,
     };
   });
-  // Pre-translate the best (hash-matched, when available) English subtitle as soon as playback starts.
+  // Pre-translate the chosen English subtitle as soon as playback starts.
   let current = null;
-  if (cfg.autoTranslate && english[0]) {
-    const job = (current = getOrStartJob(english[0].url, cfg));
+  if (cfg.autoTranslate && tracks[0]) {
+    const job = (current = getOrStartJob(tracks[0].src, cfg));
     // Ranks above older, abandoned jobs but below any track the user actually selects.
     job.lastRequested = Math.max(job.lastRequested || 0, Date.now() - 3600e3);
   }
-  console.log(`[subs] ${type} ${decodeURIComponent(id)}: ${english.length} track(s)${ready > 0 ? ' (reused a pre-translated subtitle)' : ''}`);
+  const d = report.decision || {};
+  console.log(`[subs] ${type} ${decodeURIComponent(id)}: ${tracks.length} track(s)${d.chosen ? ` · ${d.chosen} (${d.why})` : ''}${d.reuse ? ` · reusing ${d.reuse.from} (${d.reuse.fix})` : ''}`);
   send(res, 200, { subtitles, cacheMaxAge: 60 }, undefined, { 'Cache-Control': 'max-age=60' });
   // Start the next episode only after this one is translated, so it never takes LM Studio slots from it.
   if (cfg.prefetchNext && type === 'series') {
     Promise.resolve(current && current.promise).then(() => prefetchNextEpisode(cfg, decodeURIComponent(id)));
   }
+}
+
+// Why a subtitle was (or wasn't) chosen — for troubleshooting sync problems.
+async function handleReport(req, res, token, type, id, extra) {
+  const cfg = decodeConfig(token);
+  if (!cfg) return send(res, 403, { error: 'Unknown configuration' });
+  const { tracks, report } = await selectSubtitles(cfg, type, id, extra);
+  send(res, 200, { ...report, tracks: tracks.map((t) => ({ translate: t.src, retimeTo: t.ref, quality: t.q })) }, undefined, { 'Cache-Control': 'no-store' });
 }
 
 // While an episode plays, translate the next one at the lowest priority so it starts fully in Greek.
@@ -194,9 +185,9 @@ async function prefetchNextEpisode(cfg, id) {
   if (prefetched.has(key) && Date.now() - prefetched.get(key) < 6 * 3600e3) return;
   prefetched.set(key, Date.now());
   try {
-    const subs = await fetchSourceSubs(cfg, 'series', nextId, '');
-    if (!subs[0]) return;
-    const job = getOrStartJob(subs[0].url, cfg);
+    const { tracks } = await selectSubtitles(cfg, 'series', nextId, '', { budgetMs: 8000 });
+    if (!tracks[0]) return;
+    const job = getOrStartJob(tracks[0].src, cfg);
     job.lastRequested = Math.max(job.lastRequested || 0, 1); // lowest priority
     console.log(`[prefetch] ${nextId} -> ${job.key} (${job.status})`);
   } catch (e) {
@@ -207,7 +198,7 @@ async function prefetchNextEpisode(cfg, id) {
 async function handleTranslation(req, res, token, src, sig) {
   const cfg = decodeConfig(token);
   if (!cfg || sign(src) !== sig) return send(res, 403, 'Forbidden', 'text/plain');
-  const srcUrl = Buffer.from(src, 'base64url').toString('utf8');
+  const { srcUrl, refUrl, quality } = readPayload(src);
   const job = getOrStartJob(srcUrl, cfg);
   job.lastRequested = Date.now(); // the track being watched gets the provider's slots first
   // Stremio's streaming server gives up after ~10 s, so answer well before that: return as soon as the
@@ -226,9 +217,40 @@ async function handleTranslation(req, res, token, src, sig) {
   }
   job.served = true;
   console.log(`[serve] ${job.key} ${job.status} ${job.total ? Math.floor((job.done / job.total) * 100) : 0}% after ${Date.now() - t0}ms`);
-  send(res, 200, renderJob(job, cfg), 'application/x-subrip; charset=utf-8', {
+  send(res, 200, await finishTrack(renderJob(job, cfg), job, cfg, srcUrl, refUrl, quality), 'application/x-subrip; charset=utf-8', {
     'Cache-Control': job.status === 'done' ? 'public, max-age=86400' : 'no-store',
   });
+}
+
+// Retime a reused translation to the reference subtitle, and add a short sync note when useful.
+async function finishTrack(srt, job, cfg, srcUrl, refUrl, quality) {
+  if (!cfg.autoSync || (!refUrl && !(cfg.syncNotes && quality === 'unverified'))) return srt;
+  let cues = parseSubtitles(srt);
+  let fixed = '';
+  if (refUrl && job.status !== 'error') {
+    try {
+      const a = await Promise.race([alignmentFor(srcUrl, refUrl), new Promise((r) => setTimeout(() => r(null), 3000))]);
+      if (a && a.ok && !isNoop(a)) {
+        cues = retimeCues(cues, a.map);
+        fixed = describeFix(a, cfg.targetLang === 'ell' ? 'el' : 'en');
+      }
+    } catch (e) {
+      console.error(`[sync] retime failed: ${e.message}`);
+    }
+  }
+  if (cfg.syncNotes && job.status === 'done') {
+    const el = cfg.targetLang === 'ell';
+    let note = null;
+    if (fixed) note = el ? `⏱ Ο συγχρονισμός διορθώθηκε αυτόματα (${fixed})` : `⏱ Timing corrected automatically (${fixed})`;
+    else if (quality === 'unverified') {
+      note = el
+        ? '⚠ Δεν βρέθηκε υπότιτλος για αυτή ακριβώς την έκδοση.\nΑν δεν συγχρονίζει: μενού υποτίτλων (CC) → Καθυστέρηση'
+        : "⚠ No subtitle found for this exact release.\nIf it's out of sync: subtitles menu (CC) → Delay";
+    }
+    if (note) cues.push({ start: 500, end: 5000, text: note });
+  }
+  cues.sort((a, b) => a.start - b.start);
+  return toSrt(cues);
 }
 
 function checkPassword(body) {
@@ -339,6 +361,9 @@ const server = http.createServer(async (req, res) => {
     }
     if ((m = pathname.match(/^\/([\w-]{20,})\/subtitles\/([^/]+)\/([^/]+?)(?:\/([^/]+))?\.json$/))) {
       return await handleSubtitles(req, res, m[1], m[2], m[3], m[4]);
+    }
+    if ((m = pathname.match(/^\/([\w-]{20,})\/report\/([^/]+)\/([^/]+?)(?:\/([^/]+?))?\.json$/))) {
+      return await handleReport(req, res, m[1], m[2], m[3], m[4] || '');
     }
     if ((m = pathname.match(/^\/([\w-]{20,})\/stream\/([^/]+)\/([^/]+?)\.json$/))) {
       return await handleStream(req, res, m[1], m[2], m[3]);

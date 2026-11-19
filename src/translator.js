@@ -6,7 +6,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { chat, LANGUAGES } = require('./providers');
-const { decodeBuffer, parseSubtitles, toSrt } = require('./subtitles');
+const { toSrt } = require('./subtitles');
+const { downloadCues } = require('./sync');
 const { DATA_DIR, effectiveLimits } = require('./config');
 
 const CACHE_DIR = path.join(DATA_DIR, 'cache');
@@ -180,11 +181,7 @@ async function translateBatch(job, idxs, cfg, depth = 0) {
 
 async function runJob(job, srcUrl, cfg) {
   try {
-    const res = await fetch(srcUrl, { signal: AbortSignal.timeout(30000), redirect: 'follow' });
-    if (!res.ok) throw new Error(`Could not download source subtitle (HTTP ${res.status})`);
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length > 5 * 1024 * 1024) throw new Error('Source subtitle is too large');
-    const cues = parseSubtitles(decodeBuffer(buf));
+    const cues = await downloadCues(srcUrl);
     if (!cues.length) throw new Error('Source subtitle has no readable cues (unsupported format?)');
     job.cues = cues;
     job.out = new Array(cues.length).fill(null);
