@@ -1,3 +1,5 @@
+> HellasCue AI is now [PolyCue AI](https://github.com/jfle/aio-streams-subtitles-greek/tree/polycue-ai), with built-in OpenSubtitles v3 and multilingual AI translation.
+
 <p align="center"><img src="docs/images/hellascue-launch.png" alt="HellasCue AI. Take back the subtitle menu." width="1200"></p>
 
 # HellasCue AI
