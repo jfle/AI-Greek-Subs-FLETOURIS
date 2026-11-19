@@ -14,6 +14,13 @@
 
 </div>
 
+## Standalone editions
+
+- **HellasCue AI** installs Greek AI subtitles for Stremio with its own Linux installer and Docker packaging. [Open the HellasCue AI branch](https://github.com/jfle/aio-streams-subtitles-greek/tree/hellascue-ai)
+- **AIOStreams Standalone Installer** deploys the upstream AIOStreams image with its own configuration and data. [Open the AIOStreams branch](https://github.com/jfle/aio-streams-subtitles-greek/tree/aiostreams-standalone)
+
+This branch documents the bundled v2 release.
+
 One installer sets up two things on your Raspberry Pi, Orange Pi or any Linux box, both behind HTTPS that Stremio accepts — at home and, optionally, away:
 
 | Component | What it does |
