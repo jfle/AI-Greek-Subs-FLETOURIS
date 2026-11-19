@@ -18,7 +18,7 @@ const OA_AUTH = (process.env.OPENAI_AUTH_URL || 'https://auth.openai.com').repla
 const OA_ISSUER = process.env.OPENAI_ISSUER || 'https://auth.openai.com';
 const OA_RESOURCE = 'https://api.openai.com/v1';
 const OA_SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct';
-const APP_NAME = 'AIO-Streams&Subtitles-Greek';
+const APP_NAME = 'HellasCue AI';
 
 const rand = (n = 32) => crypto.randomBytes(n).toString('base64url');
 function pkce() {

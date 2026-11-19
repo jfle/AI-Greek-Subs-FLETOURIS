@@ -15,9 +15,8 @@ Only the latest release is supported with fixes.
 | Subtitle downloads | The server only downloads subtitle URLs it handed out itself (HMAC-signed links), so it can't be abused as an open proxy. |
 | Service account | The installer runs the addon as an unprivileged `aigreeksubs` user with `NoNewPrivileges`, `ProtectSystem=full` and write access only to its data folder. |
 | Configure page | `CONFIG_PASSWORD` protects testing, model listing, sign-in and link generation. It is generated automatically when outside access is enabled; without it, configuration requests arriving through the external address are refused. Wrong passwords are delayed 1 s and an address is locked out for 15 minutes after 10 failures. |
-| Outside access | Only through HTTPS. Secrets (`CONFIG_PASSWORD`, `EXTERNAL_URL`) live in `/etc/aio-streams-subtitles-greek.env` (root-only), not in the world-readable systemd unit. |
+| Outside access | Only through HTTPS. Secrets (`CONFIG_PASSWORD`, `EXTERNAL_URL`) live in `/etc/hellascue-ai.env` (root-only), not in the world-readable systemd unit. |
 
-| Bundled AIOStreams | Runs in Docker, bound to `127.0.0.1` and reachable only through nginx HTTPS. Login required (`AIOSTREAMS_AUTH`); its `SECRET_KEY` encrypts stored configurations. `/opt/aiostreams/.env` is root-only. |
 
 ## What you should do
 
@@ -29,4 +28,4 @@ Only the latest release is supported with fixes.
 
 ## Provider terms
 
-The sign-in features use the official, publicly documented flows that each provider offers to third-party apps (OpenRouter OAuth PKCE, OpenAI's "Sign in with ChatGPT" for open-source apps, xAI's device-code sign-in with its shared app client). The addon deliberately offers **no** sign-in for providers that forbid using subscriptions in other apps (Anthropic, Google). You are responsible for using your accounts within each provider's terms.
+Review your provider’s terms before enabling any integration. For automated cloud translation, use an API key with a provider that permits your use case. For offline inference, use a compatible local model endpoint.

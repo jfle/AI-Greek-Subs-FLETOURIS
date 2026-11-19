@@ -174,7 +174,7 @@ function openaiHeaders(cfg) {
   if (key) h.Authorization = `Bearer ${key}`;
   if (cfg.provider === 'openrouter') {
     h['HTTP-Referer'] = 'https://github.com/aio-streams-subtitles-greek';
-    h['X-Title'] = 'AIO-Streams&Subtitles-Greek';
+    h['X-Title'] = 'HellasCue AI';
   }
   return h;
 }

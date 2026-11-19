@@ -2,6 +2,11 @@
 
 All notable changes to this project. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org).
 
+## [3.0.0] — 2026-11-19
+
+- Launch HellasCue AI as a standalone Stremio subtitle addon with dedicated installers, packaging and branding.
+- The Linux installer carries forward existing subtitle settings and leaves the AIOStreams container, proxy and data alone.
+
 ## [2.0.2] — 2026-11-19
 
 - Offer an AI backup track when a higher-priority addon already has subtitles. The player can request a translation by loading the backup track.

@@ -1,16 +1,12 @@
 services:
-  ai-greek-subs:
-    image: ghcr.io/jfle/aio-streams-subtitles-greek:latest
+  hellascue-ai:
     build: .
-    container_name: aio-streams-subtitles-greek
+    image: ghcr.io/jfle/hellascue-ai:latest
     restart: unless-stopped
     ports:
-      - "7000:7000"
+      - "127.0.0.1:7000:7000"
     volumes:
       - ./data:/data
-    environment:
-      # Public HTTPS address Stremio will use (set this once you have HTTPS / a domain / a tunnel):
-      # PUBLIC_URL: https://subs.example.com
-      # Password protecting the configuration page (recommended when it is reachable from the internet):
-      # CONFIG_PASSWORD: change-me
-      CACHE_DAYS: "30"
+    env_file:
+      - path: .env
+        required: false

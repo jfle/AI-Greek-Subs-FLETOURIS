@@ -80,12 +80,3 @@ test('the external address is recognised without its port (other forwarded port 
     assert.equal(new URL(m.logo).origin, EXT);
   } finally { await addon.stop(); }
 });
-
-test('the configure page links to the bundled AIOStreams when it is installed', async () => {
-  const addon = await startAddon(mock.base, { AIOSTREAMS_URL: 'https://203-0-113-5.local-ip.sh:8444/' });
-  try {
-    const page = (await call(addon.base, '/configure')).text;
-    assert.match(page, /"aiostreams":"https:\/\/203-0-113-5\.local-ip\.sh:8444"/);
-    assert.match(page, /id="aioBox"/);
-  } finally { await addon.stop(); }
-});

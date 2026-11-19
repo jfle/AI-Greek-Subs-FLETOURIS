@@ -1,5 +1,5 @@
 FROM node:22-alpine
-LABEL org.opencontainers.image.title="AIO-Streams&Subtitles-Greek" \
+LABEL org.opencontainers.image.title="HellasCue AI" \
       org.opencontainers.image.description="Stremio addon: AI-translated Greek subtitles" \
       org.opencontainers.image.source="https://github.com/jfle/aio-streams-subtitles-greek" \
       org.opencontainers.image.licenses="MIT"

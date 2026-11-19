@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [hellascue-ai]
   pull_request:
 
 permissions:
@@ -33,20 +33,22 @@ jobs:
         run: shellcheck -S warning install.sh build-installer.sh
       - name: Build single-file installer
         run: bash build-installer.sh
-      - name: Install with the built installer (HTTP mode, with AIOStreams) and check both services
+      - name: Verify standalone installer and preserve a pre-existing AIOStreams installation
         run: |
-          sudo bash dist/aio-streams-subtitles-greek-installer.sh --https none
+          sudo mkdir -p /opt/aiostreams
+          printf 'preserve-me\n' | sudo tee /opt/aiostreams/compose.yaml
+          sudo bash dist/hellascue-ai-installer.sh --https none
           curl -fsS http://127.0.0.1:7000/health
-          curl -fsS http://127.0.0.1:7000/manifest.json
-          for i in $(seq 1 60); do curl -fsS -o /dev/null http://127.0.0.1:3000/ && break; sleep 3; done
-          curl -fsS -o /dev/null -w 'AIOStreams HTTP %{http_code}\n' http://127.0.0.1:3000/
-          sudo grep -q '^AIOSTREAMS_AUTH=admin:' /opt/aiostreams/.env
-          sudo bash dist/aio-streams-subtitles-greek-installer.sh --no-aiostreams
-          ! docker ps --format '{{.Names}}' | grep -qx aiostreams
-          sudo bash dist/aio-streams-subtitles-greek-installer.sh --uninstall --purge
+          curl -fsS http://127.0.0.1:7000/manifest.json | grep -F 'HellasCue AI'
+          sudo bash dist/hellascue-ai-installer.sh --uninstall --purge
+          sudo grep -Fx 'preserve-me' /opt/aiostreams/compose.yaml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hellascue-ai-installer
+          path: dist/*
       - name: Build Docker image
         run: |
-          docker build -t aio-streams-subtitles-greek:ci .
-          docker run -d --name aigs-ci -p 7001:7000 aio-streams-subtitles-greek:ci
+          docker build -t hellascue-ai:ci .
+          docker run -d --name aigs-ci -p 7001:7000 hellascue-ai:ci
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:7001/health && break; sleep 1; done
           docker rm -f aigs-ci

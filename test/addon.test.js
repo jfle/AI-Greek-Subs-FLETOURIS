@@ -26,6 +26,7 @@ test('health, unconfigured manifest and configure page', async () => {
   const h = await getJson(`${addon.base}/health`);
   assert.deepEqual(h.body, { ok: true, version: pkg.version });
   const m = await getJson(`${addon.base}/manifest.json`);
+  assert.equal(m.body.name, 'HellasCue AI');
   assert.equal(m.body.id, 'community.ai-greek-subs-fletouris');
   assert.equal(m.body.behaviorHints.configurationRequired, true);
   assert.deepEqual(m.body.resources, ['subtitles']);
