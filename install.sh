@@ -348,8 +348,8 @@ if [[ $AIOSTREAMS -eq 1 ]]; then
       echo "NODE_ENV=production"
       echo "# Login for this instance (username:password)."
       echo "AIOSTREAMS_AUTH=$AIO_USER:$AIO_NEW_PW"
-      echo "TEMPLATE_URLS=https://raw.githubusercontent.com/jfle/aio-streams-subtitles-greek/main/templates/aiostreams-english-greek.json"
-      echo "FEATURED_TEMPLATE_IDS=jfle.english-greek-stremio"
+      printf '%s\n' 'TEMPLATE_URLS=["https://raw.githubusercontent.com/jfle/aio-streams-subtitles-greek/main/templates/aiostreams-english-greek.json"]'
+      printf '%s\n' 'FEATURED_TEMPLATE_IDS=["jfle.english-greek-stremio"]'
     } > "$AIO_DIR/.env"
     umask 022
   else
