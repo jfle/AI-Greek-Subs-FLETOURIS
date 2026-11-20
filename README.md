@@ -19,6 +19,18 @@
 - **PolyCue AI** brings OpenSubtitles v3 and local-first AI translation into one Stremio addon. [Open the PolyCue AI branch](https://github.com/jfle/aio-streams-subtitles-greek/tree/polycue-ai)
 - **AIOStreams Standalone Installer** deploys the upstream AIOStreams image with its own configuration and data. [Open the AIOStreams branch](https://github.com/jfle/aio-streams-subtitles-greek/tree/aiostreams-standalone)
 
+### Three-add-on setup for movies and series
+
+Use the standalone editions alongside [AIOMetadata](https://github.com/cedya77/aiometadata) to browse mainstream movies and series in Stremio:
+
+| Add-on | Setup |
+| --- | --- |
+| **AIOMetadata** | Use TMDB for movie and series metadata. Put Netflix Movies and Series first, followed by TMDB Trending and Popular. Add movie and series rows for Prime Video, Disney+, HBO Max, Apple TV+, SkyShowtime, Paramount+, Hulu, and Peacock where relevant. Keep Top Rated and Airing Today for discovery. |
+| **AIOStreams** | Set English as the preferred audio language and Greek as the preferred embedded subtitle language. In **Sorting**, rank Cached first, then Language, Subtitle, Resolution, and Quality. Keep language and subtitle preferences soft so releases with incomplete tags still appear. Disable anime-only sources if you only watch mainstream movies and series. |
+| **PolyCue AI** | Install it separately for Greek subtitles. Select Greek, use OpenSubtitles v3 first, and enable a local translation fallback if you have a compatible model configured. Set Stremio’s default subtitle language to **Ελληνικά**. |
+
+Provider rows are for browsing. Title availability varies by region and playback depends on your configured sources. To verify a new setup, load the catalog rows, play a movie and a series episode, and check that Greek subtitles appear and stay in sync.
+
 This branch documents the bundled v2 release.
 
 One installer sets up two things on your Raspberry Pi, Orange Pi or any Linux box, both behind HTTPS that Stremio accepts — at home and, optionally, away:
