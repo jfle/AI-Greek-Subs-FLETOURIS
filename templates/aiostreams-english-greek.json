@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "id": "jfle.english-greek-stremio",
+    "name": "English Movies and TV with Greek Subtitles",
+    "description": "Prefer cached releases, English audio and embedded Greek subtitles, then rank by resolution and quality. PolyCue can supply external Greek subtitles in Stremio.",
+    "author": "jfle",
+    "category": "Playback",
+    "source": "external",
+    "version": "1.0.0",
+    "services": [],
+    "setToSaveInstallMenu": false
+  },
+  "config": {
+    "preferredLanguages": [
+      "English"
+    ],
+    "preferredSubtitles": [
+      "Greek"
+    ],
+    "sortCriteria": {
+      "global": [
+        {
+          "key": "cached",
+          "direction": "desc"
+        },
+        {
+          "key": "language",
+          "direction": "desc"
+        },
+        {
+          "key": "subtitle",
+          "direction": "desc"
+        },
+        {
+          "key": "resolution",
+          "direction": "desc"
+        },
+        {
+          "key": "quality",
+          "direction": "desc"
+        },
+        {
+          "key": "library",
+          "direction": "desc"
+        },
+        {
+          "key": "visualTag",
+          "direction": "desc"
+        },
+        {
+          "key": "audioTag",
+          "direction": "desc"
+        },
+        {
+          "key": "encode",
+          "direction": "desc"
+        },
+        {
+          "key": "size",
+          "direction": "desc"
+        }
+      ]
+    },
+    "enableSeadex": false
+  }
+}
