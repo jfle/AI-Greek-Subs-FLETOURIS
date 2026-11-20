@@ -31,6 +31,8 @@ if [[ ! -f "$dir/.env" ]]; then
     printf 'BASE_URL=http://localhost:3000\n'
     printf 'SECRET_KEY=%s\n' "$secret"
     printf 'AIOSTREAMS_AUTH=admin:%s\n' "$password"
+    printf '%s\n' 'TEMPLATE_URLS=https://raw.githubusercontent.com/jfle/aio-streams-subtitles-greek/main/templates/aiostreams-english-greek.json'
+    printf '%s\n' 'FEATURED_TEMPLATE_IDS=jfle.english-greek-stremio'
   } > "$dir/.env"
   created_credentials=1
 fi
