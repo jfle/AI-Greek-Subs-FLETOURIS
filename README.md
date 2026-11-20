@@ -29,6 +29,10 @@ Use the standalone editions alongside [AIOMetadata](https://github.com/cedya77/a
 | **AIOStreams** | Set English as the preferred audio language and Greek as the preferred embedded subtitle language. In **Sorting**, rank Cached first, then Language, Subtitle, Resolution, and Quality. Keep language and subtitle preferences soft so releases with incomplete tags still appear. Disable anime-only sources if you only watch mainstream movies and series. |
 | **PolyCue AI** | Install it separately for Greek subtitles. Select Greek, use OpenSubtitles v3 first, and enable a local translation fallback if you have a compatible model configured. Set Stremio’s default subtitle language to **Ελληνικά**. |
 
+Fresh installs from the current source offer the [English Movies and TV with Greek Subtitles template](templates/aiostreams-english-greek.json) as the first AIOStreams setup choice. Select it during setup, then add your own stream sources and any service credentials. Upgrading preserves existing AIOStreams settings.
+
+For a separate AIOMetadata instance, download the [mainstream catalog template](templates/aiometadata-mainstream.json), open **Configuration → Import Configuration**, and supply your own TMDB key if the server does not provide one. Import it into a new profile to preserve any existing catalog lineup.
+
 Provider rows are for browsing. Title availability varies by region and playback depends on your configured sources. To verify a new setup, load the catalog rows, play a movie and a series episode, and check that Greek subtitles appear and stay in sync.
 
 This branch documents the bundled v2 release.
