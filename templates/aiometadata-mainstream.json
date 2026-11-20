@@ -1,0 +1,315 @@
+{
+  "version": "4.1.0",
+  "metadata": {
+    "apiKeysExcluded": true,
+    "enabledCatalogs": 25
+  },
+  "config": {
+    "language": "en-US",
+    "providers": {
+      "movie": "tmdb",
+      "series": "tmdb"
+    },
+    "apiKeys": {},
+    "streaming": [
+      "nfx",
+      "amp",
+      "dnp",
+      "hbm",
+      "atp",
+      "sst",
+      "pmp",
+      "hlu",
+      "pcp"
+    ],
+    "catalogs": [
+      {
+        "id": "streaming.nfx",
+        "name": "Netflix (Movies)",
+        "type": "movie",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.nfx",
+        "name": "Netflix (Series)",
+        "type": "series",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "tmdb.trending",
+        "name": "TMDB Trending",
+        "type": "movie",
+        "source": "tmdb",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false
+      },
+      {
+        "id": "tmdb.trending",
+        "name": "TMDB Trending",
+        "type": "series",
+        "source": "tmdb",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false
+      },
+      {
+        "id": "tmdb.top",
+        "name": "TMDB Popular",
+        "type": "movie",
+        "source": "tmdb",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false
+      },
+      {
+        "id": "tmdb.top",
+        "name": "TMDB Popular",
+        "type": "series",
+        "source": "tmdb",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false
+      },
+      {
+        "id": "streaming.amp",
+        "name": "Prime Video (Movies)",
+        "type": "movie",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.amp",
+        "name": "Prime Video (Series)",
+        "type": "series",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.dnp",
+        "name": "Disney+ (Movies)",
+        "type": "movie",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.dnp",
+        "name": "Disney+ (Series)",
+        "type": "series",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.hbm",
+        "name": "HBO Max (Movies)",
+        "type": "movie",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.hbm",
+        "name": "HBO Max (Series)",
+        "type": "series",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.atp",
+        "name": "Apple TV+ (Movies)",
+        "type": "movie",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.atp",
+        "name": "Apple TV+ (Series)",
+        "type": "series",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.sst",
+        "name": "SkyShowtime (Movies)",
+        "type": "movie",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.sst",
+        "name": "SkyShowtime (Series)",
+        "type": "series",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.pmp",
+        "name": "Paramount+ (Movies)",
+        "type": "movie",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.pmp",
+        "name": "Paramount+ (Series)",
+        "type": "series",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.hlu",
+        "name": "Hulu (Movies)",
+        "type": "movie",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.hlu",
+        "name": "Hulu (Series)",
+        "type": "series",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.pcp",
+        "name": "Peacock Premium (Movies)",
+        "type": "movie",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "streaming.pcp",
+        "name": "Peacock Premium (Series)",
+        "type": "series",
+        "source": "streaming",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false,
+        "sort": "popularity",
+        "sortDirection": "desc"
+      },
+      {
+        "id": "tmdb.top_rated",
+        "name": "TMDB Top Rated",
+        "type": "movie",
+        "source": "tmdb",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false
+      },
+      {
+        "id": "tmdb.top_rated",
+        "name": "TMDB Top Rated",
+        "type": "series",
+        "source": "tmdb",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false
+      },
+      {
+        "id": "tmdb.airing_today",
+        "name": "TMDB Airing Today",
+        "type": "series",
+        "source": "tmdb",
+        "enabled": true,
+        "showInHome": true,
+        "enableRatingPosters": true,
+        "randomizePerPage": false
+      }
+    ],
+    "catalogSetupComplete": true
+  }
+}
