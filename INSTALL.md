@@ -92,6 +92,25 @@ An existing `/opt/aiostreams` is kept as it is (secret key, login, configuration
 
 **Change the login:** edit `AIOSTREAMS_AUTH=user:password` in `/opt/aiostreams/.env`, then `sudo aiostreams-update`.
 
+### Schedule AIOMetadata updates
+
+The bundled AIOStreams installer already sets up a weekly updater. If you run AIOMetadata separately using Docker Compose and SQLite, copy the [AIOMetadata updater](scripts/aiometadata-update.sh) from this checkout:
+
+```bash
+sudo install -m 755 scripts/aiometadata-update.sh /usr/local/bin/aiometadata-update
+sudo /usr/local/bin/aiometadata-update /path/to/aiometadata
+```
+
+The argument is the directory containing the AIOMetadata Compose file. The updater expects the service name `aiometadata` and the standard SQLite data mount at `/app/addon/data`. It creates a private, integrity-checked SQLite snapshot in `update-backups/` before pulling the image. It then updates only AIOMetadata and checks its health endpoint. Keep the backups private because copied environment files may contain credentials.
+
+For a weekly schedule, add this line to root's crontab with `sudo crontab -e`, replacing the Compose directory with your own:
+
+```cron
+15 4 * * 3 /usr/local/bin/aiometadata-update /path/to/aiometadata
+```
+
+Run the updater manually once before scheduling it. The command returns an error if the service fails the health check and leaves the pre-update snapshot available for recovery.
+
 ## Option B — from a git clone
 
 Same result as Option A, using the repository directly:
