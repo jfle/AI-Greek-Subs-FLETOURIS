@@ -2,6 +2,12 @@
 
 All notable changes to this project. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+- Offer a ready-to-select AIOStreams template for English audio and Greek subtitles on fresh installs. Provide a separate mainstream catalog template for AIOMetadata.
+- Add `--aio-public-url` for the bundled AIOStreams installer and document free HTTPS hostnames behind CGNAT.
+- Add an AIOMetadata updater that verifies a SQLite backup before updating and checks service health afterward.
+
 ## [2.0.2] — 2026-11-19
 
 - Offer an AI backup track when a higher-priority addon already has subtitles. The player can request a translation by loading the backup track.
