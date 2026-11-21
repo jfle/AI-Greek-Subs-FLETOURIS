@@ -240,7 +240,7 @@ Your addon is now at `https://<machine>.<tailnet>.ts.net`. Install with `--https
 If you do not have an inbound-reachable public IP, a free dynamic DNS hostname alone cannot route traffic through CGNAT. [Tailscale Funnel](https://tailscale.com/docs/features/tailscale-funnel) supplies a stable `*.ts.net` HTTPS address on the free plan and works without router port forwarding or a purchased domain. Funnel URLs are public. For access only by devices on your tailnet, use [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) instead.
 
 1. Install Tailscale on the host, sign in, and enable MagicDNS, HTTPS, and Funnel in your tailnet. Replace `YOUR_HOST.YOUR_TAILNET.ts.net` below with the actual name of the host.
-2. From a checkout of the current source, configure the bundled installer with the two HTTPS origins. For a fresh install with free local ports, use:
+2. From a checkout of the current source, configure the bundled installer with the two HTTPS origins. The published v2.0.2 one-file installer predates the bundled `--aio-public-url` flag. For a fresh install with available local ports, use:
 
    ```bash
    sudo bash install.sh --https none --port 7000 \
