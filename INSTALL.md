@@ -237,7 +237,7 @@ Your addon is now at `https://<machine>.<tailnet>.ts.net`. Install with `--https
 
 ### Behind CGNAT with a free HTTPS hostname
 
-**Guided fresh install (bundled add-ons):**
+**Guided fresh install (all three add-ons):**
 
 ```bash
 git clone https://github.com/jfle/aio-streams-subtitles-greek.git
@@ -245,7 +245,9 @@ cd aio-streams-subtitles-greek
 sudo bash install-funnel.sh
 ```
 
-The script installs Tailscale if needed, prompts for Tailscale sign-in and Funnel approval, and prints both Stremio configuration URLs. It checks that the add-on configuration pages require authentication before it enables the public routes. AIOMetadata is a separate install. Use the manual steps below for an existing Pi setup or for AIOMetadata.
+The script installs Tailscale if needed, prompts for Tailscale sign-in and Funnel approval, and prints three Stremio configuration URLs. It installs AIOMetadata with Redis in `/opt/aiometadata`, enables configuration protection, and checks that AIOMetadata is ready before enabling Funnel. Use the manual steps below for an existing Pi setup.
+
+To finish AIOMetadata, open its setup URL, choose **Configuration → Import Configuration**, and select `templates/aiometadata-mainstream.json` from the checkout. Enter your own TMDB key and the generated `ADDON_PASSWORD` from `/opt/aiometadata/.env` when prompted, then save and install the private Stremio link. The app data and Redis cache are in separate Docker volumes.
 
 If you do not have an inbound-reachable public IP, a free dynamic DNS hostname alone cannot route traffic through CGNAT. [Tailscale Funnel](https://tailscale.com/docs/features/tailscale-funnel) supplies a stable `*.ts.net` HTTPS address on the free plan and works without router port forwarding or a purchased domain. Funnel URLs are public. For access only by devices on your tailnet, use [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) instead.
 
@@ -270,7 +272,7 @@ If you do not have an inbound-reachable public IP, a free dynamic DNS hostname a
 
 4. Open `https://YOUR_HOST.YOUR_TAILNET.ts.net/configure` for subtitles and `https://YOUR_HOST.YOUR_TAILNET.ts.net:8443/stremio/configure` for AIOStreams. Generate fresh Stremio install links when switching to the new hostname. Verify the links from a device off your home network.
 
-If you also run AIOMetadata separately, set its Compose `HOST_NAME` to `https://YOUR_HOST.YOUR_TAILNET.ts.net:10000` and point a third Funnel at its loopback HTTP port, ordinarily `3232`:
+For a manual or existing AIOMetadata deployment, set its Compose `HOST_NAME` to `https://YOUR_HOST.YOUR_TAILNET.ts.net:10000` and point a third Funnel at its loopback HTTP port, ordinarily `3232`:
 
 ```bash
 sudo tailscale funnel --bg --https=10000 http://127.0.0.1:3232
