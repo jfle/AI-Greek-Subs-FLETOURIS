@@ -24,6 +24,10 @@ For a fresh install, the app listens on `127.0.0.1:3000` with a generated admin 
 
 Set `BASE_URL` in `/opt/aiostreams/.env` to the HTTPS URL that your Stremio clients will use, including the external port if it differs from 443. The host must be online and reachable for Stremio to use the addon.
 
+### Remote access without a public IP
+
+Follow the [free Tailscale HTTPS hostname guide](https://github.com/jfle/aio-streams-subtitles-greek/blob/main/INSTALL.md#behind-cgnat-with-a-free-https-hostname) if your ISP uses CGNAT. For this standalone installer, keep the backend bound to loopback and point Funnel to the mapped local HTTP port. Set `BASE_URL` to the resulting HTTPS origin, enable configuration authentication before exposing it publicly, and restart with `docker compose up -d`. For a private tailnet, use Tailscale Serve.
+
 ## Update or stop AIOStreams
 
 Preserve `SECRET_KEY` and the data directory when updating. Rerun the installer to pull the upstream image and apply configuration changes.
