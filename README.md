@@ -86,6 +86,8 @@ It installs Node.js (and Docker for AIOStreams) if needed, sets up both services
 **Away from home too?** Add `--public-ip auto --public-port 8443` and forward ports 8443 (subtitles) and 8444 (AIOStreams) on your router — see [INSTALL.md → Outside your home network](INSTALL.md#outside-your-home-network-public-ip-or-domain).
 
 **2. Configure:** open that address in a browser on your network, pick a provider, **sign in** (or paste a key), click **Load models**, pick a model and **Test translation**.
+**Behind CGNAT or without a public IP?** Use a [free Tailscale HTTPS hostname](INSTALL.md#behind-cgnat-with-a-free-https-hostname) without router port forwarding.
+
 
 **3. Set up AIOStreams:** open its address, sign in with the printed login, add your debrid service and stream addons, and add the subtitle install link (from step 2's **Generate install link**) as a **custom addon**. Save and click **Install** — Stremio now gets streams and Greek subtitles from one addon.
 
