@@ -14,6 +14,8 @@
 #   sudo ./install.sh --no-aiostreams  subtitle addon only (skip / remove the bundled AIOStreams)
 #   sudo ./install.sh --aio-port 8444 [--aio-public-port 8444]
 #                                      HTTPS port for AIOStreams (and the router port for outside access)
+#   sudo ./install.sh --aio-public-url https://streams.example.com
+#                                      public HTTPS base for bundled AIOStreams behind a tunnel
 #   sudo ./install.sh --uninstall      remove the service (keeps data); add --purge to delete data too
 #
 # After installing, open the printed address, configure your AI provider and click "Install in Stremio".
@@ -36,7 +38,7 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF=/etc/$APP.conf      # settings remembered between updates (root only)
 ENVFILE=/etc/$APP.env    # secrets for the service (root only)
 PUBLIC_IP=""; PUBLIC_PORT=""; PUBLIC_URL_EXT=""; CONFIG_PASSWORD=""
-AIOSTREAMS=1; AIO_PORT=8444; AIO_PUBLIC_PORT=""; AIO_USER="admin"
+AIOSTREAMS=1; AIO_PORT=8444; AIO_PUBLIC_PORT=""; AIO_PUBLIC_URL=""; AIO_USER="admin"
 # Settings from the previous project name are picked up once, then saved under the new name.
 [[ ! -r "$CONF" && -r "$OLD_CONF.conf" ]] && CONF_SRC="$OLD_CONF.conf" || CONF_SRC="$CONF"
 [[ ! -r "$ENVFILE" && -r "$OLD_CONF.env" ]] && ENV_SRC="$OLD_CONF.env" || ENV_SRC="$ENVFILE"
@@ -57,17 +59,18 @@ while [[ $# -gt 0 ]]; do
     --public-ip) PUBLIC_IP="$2"; PUBLIC_URL_EXT=""; shift 2 ;;
     --public-port) PUBLIC_PORT="$2"; shift 2 ;;
     --public-url) PUBLIC_URL_EXT="${2%/}"; PUBLIC_IP=""; shift 2 ;;
-    --no-public) PUBLIC_IP=""; PUBLIC_PORT=""; PUBLIC_URL_EXT=""; shift ;;
+    --no-public) PUBLIC_IP=""; PUBLIC_PORT=""; PUBLIC_URL_EXT=""; AIO_PUBLIC_URL=""; shift ;;
     --password) CONFIG_PASSWORD="$2"; shift 2 ;;
     --no-aiostreams) AIOSTREAMS=0; shift ;;
     --with-aiostreams) AIOSTREAMS=1; shift ;;
     --aio-port) AIO_PORT="$2"; shift 2 ;;
     --aio-public-port) AIO_PUBLIC_PORT="$2"; shift 2 ;;
+    --aio-public-url) [[ $# -ge 2 ]] || die "--aio-public-url requires an HTTPS URL"; AIO_PUBLIC_URL="${2%/}"; shift 2 ;;
     --aio-user) AIO_USER="$2"; shift 2 ;;
     --uninstall) UNINSTALL=1; shift ;;
     --purge) PURGE=1; shift ;;
     -y|--yes) shift ;;
-    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
     *) die "Unknown option: $1 (see --help)" ;;
   esac
 done
@@ -76,6 +79,7 @@ done
 [[ -z "$PUBLIC_PORT" || "$PUBLIC_PORT" =~ ^[0-9]+$ ]] || die "--public-port must be a number"
 [[ "$AIO_PORT" =~ ^[0-9]+$ ]] || die "--aio-port must be a number"
 [[ -z "$AIO_PUBLIC_PORT" || "$AIO_PUBLIC_PORT" =~ ^[0-9]+$ ]] || die "--aio-public-port must be a number"
+[[ -z "$AIO_PUBLIC_URL" || "$AIO_PUBLIC_URL" =~ ^https://[a-zA-Z0-9.-]+(:[0-9]{1,5})?$ ]] || die "--aio-public-url must be an HTTPS origin without a path, query, or fragment"
 [[ "$AIO_USER" =~ ^[A-Za-z0-9._-]+$ ]] || die "--aio-user may only contain letters, digits, . _ -"
 [[ -z "$PUBLIC_URL_EXT" || "$PUBLIC_URL_EXT" =~ ^https:// ]] || die "--public-url must start with https:// (Stremio requires HTTPS)"
 if [[ -n "$PUBLIC_IP" && "$HTTPS" == none ]]; then die "--public-ip needs the built-in HTTPS (don't combine it with --https none; use --public-url for your own HTTPS)"; fi
@@ -259,6 +263,7 @@ if [[ $AIOSTREAMS -eq 1 ]]; then
   else
     AIO_HOME_URL="http://$LAN_IP:3000"; AIO_URL="$AIO_HOME_URL"
   fi
+  if [[ -n "$AIO_PUBLIC_URL" ]]; then AIO_URL="$AIO_PUBLIC_URL"; fi
 fi
 
 # Save these before the environment file is overwritten, including during name migration.
@@ -275,7 +280,7 @@ umask 077
   echo "# $NAME installer settings (re-used by updates)"
   echo "PORT=$PORT"; echo "HTTPS=$HTTPS"
   echo "PUBLIC_IP=$PUBLIC_IP"; echo "PUBLIC_PORT=$PUBLIC_PORT"; echo "PUBLIC_URL_EXT=$PUBLIC_URL_EXT"
-  echo "AIOSTREAMS=$AIOSTREAMS"; echo "AIO_PORT=$AIO_PORT"; echo "AIO_PUBLIC_PORT=$AIO_PUBLIC_PORT"; echo "AIO_USER=$AIO_USER"
+  echo "AIOSTREAMS=$AIOSTREAMS"; echo "AIO_PORT=$AIO_PORT"; echo "AIO_PUBLIC_PORT=$AIO_PUBLIC_PORT"; echo "AIO_PUBLIC_URL=$AIO_PUBLIC_URL"; echo "AIO_USER=$AIO_USER"
 } > "$CONF"
 {
   if [[ -n "$EXTERNAL_URL" ]]; then echo "EXTERNAL_URL=$EXTERNAL_URL"; fi
@@ -348,6 +353,7 @@ if [[ $AIOSTREAMS -eq 1 ]]; then
       echo "NODE_ENV=production"
       echo "# Login for this instance (username:password)."
       echo "AIOSTREAMS_AUTH=$AIO_USER:$AIO_NEW_PW"
+      if [[ -n "$AIO_PUBLIC_URL" ]]; then echo "AIOSTREAMS_AUTH_REQUIRED=true"; fi
       printf '%s\n' 'TEMPLATE_URLS=["https://raw.githubusercontent.com/jfle/aio-streams-subtitles-greek/main/templates/aiostreams-english-greek.json"]'
       printf '%s\n' 'FEATURED_TEMPLATE_IDS=["jfle.english-greek-stremio"]'
     } > "$AIO_DIR/.env"
@@ -357,7 +363,7 @@ if [[ $AIOSTREAMS -eq 1 ]]; then
     sed -i "s#^BASE_URL=.*#BASE_URL=$AIO_URL#" "$AIO_DIR/.env"
   fi
   chmod 600 "$AIO_DIR/.env"
-  if [[ "$HTTPS" == localip ]]; then AIO_BIND="127.0.0.1:$AIO_INTERNAL:3000"; else AIO_BIND="$AIO_INTERNAL:3000"; fi
+  if [[ "$HTTPS" == localip || -n "$AIO_PUBLIC_URL" ]]; then AIO_BIND="127.0.0.1:$AIO_INTERNAL:3000"; else AIO_BIND="$AIO_INTERNAL:3000"; fi
   cat > "$AIO_DIR/compose.yaml" <<EOF
 # AIOStreams - bundled with $NAME. Settings: .env (keep SECRET_KEY unchanged). Update: sudo aiostreams-update
 services:
@@ -448,7 +454,11 @@ fi
 if [[ $AIOSTREAMS -eq 1 ]]; then
   echo
   echo "${c_g}  AIOStreams:${c_0} ${c_b}$AIO_URL${c_0}"
-  [[ "$AIO_URL" != "${AIO_HOME_URL:-}" ]] && echo "   At home also: $AIO_HOME_URL   (router: forward TCP $AIO_PUBLIC_PORT to $LAN_IP port $AIO_PORT)"
+  if [[ -n "$AIO_PUBLIC_URL" ]]; then
+    echo "   Point your HTTPS tunnel or proxy at http://127.0.0.1:$AIO_INTERNAL."
+  elif [[ "$AIO_URL" != "${AIO_HOME_URL:-}" ]]; then
+    echo "   At home also: $AIO_HOME_URL   (router: forward TCP $AIO_PUBLIC_PORT to $LAN_IP port $AIO_PORT)"
+  fi
   if [[ -n "$AIO_NEW_PW" ]]; then echo "${c_y}   Login (new): ${c_b}$AIO_USER / $AIO_NEW_PW${c_0}  - change it in $AIO_DIR/.env (AIOSTREAMS_AUTH), then: sudo aiostreams-update"
   else echo "   Login: as before (see AIOSTREAMS_AUTH in $AIO_DIR/.env)"; fi
   echo "   Add your debrid service there, and add the subtitle install link as a custom addon,"
