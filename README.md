@@ -8,6 +8,8 @@ PolyCue AI gives Stremio a single subtitle addon with **OpenSubtitles v3 built i
 
 [**Install PolyCue AI →**](INSTALL.md) · [**Get the installer build →**](https://github.com/jfle/aio-streams-subtitles-greek/actions/workflows/ci.yml?query=branch%3Apolycue-ai)
 
+**No public IP or router port forwarding?** Use a [free Tailscale HTTPS hostname](https://github.com/jfle/aio-streams-subtitles-greek/blob/main/INSTALL.md#behind-cgnat-with-a-free-https-hostname) with the existing `--https none --public-url https://YOUR_HOST.YOUR_TAILNET.ts.net` installer options. Forward Funnel to the local PolyCue HTTP port.
+
 ## One install. Three ways to get the track.
 
 1. **OpenSubtitles v3 first.** PolyCue lists the available tracks in your selected language. A separate OpenSubtitles addon is optional.
