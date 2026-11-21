@@ -56,6 +56,7 @@ The installer:
 | `--no-aiostreams` | Subtitle addon only: don't install the bundled AIOStreams (stops it if it was installed; its data is kept) |
 | `--aio-port 8444` | HTTPS port for AIOStreams (default 8444) |
 | `--aio-public-port 8444` | Router port for outside access to AIOStreams (default: same as `--aio-port`) |
+| `--aio-public-url https://streams.example.com` | HTTPS origin for bundled AIOStreams when a tunnel or reverse proxy provides HTTPS |
 | `--aio-user NAME` | Username for the AIOStreams login (default `admin`; the password is generated) |
 | `--https none` | Skip nginx/HTTPS — plain HTTP only. Use this if you provide HTTPS yourself (Caddy, Cloudflare Tunnel, Tailscale…) |
 | `--port 7100` | Run the addon on another local port (default `7000`; the installer also picks a free one automatically) |
@@ -185,6 +186,7 @@ Stremio only installs addons over **HTTPS** (except `localhost`). Pick one:
 |---|---|---|
 | **local-ip.sh** (the installer's default) | Devices on your home network | None — automatic |
 | **Tailscale Serve** | Your devices anywhere (phone, TV, laptop) on your tailnet | Low |
+| **Tailscale Funnel** | Anywhere, including behind CGNAT, using a supplied `ts.net` hostname | Tailscale account and Funnel enabled |
 | **Cloudflare Tunnel** | Anywhere, no port forwarding | Low–medium (needs a domain on Cloudflare) |
 | **Caddy + your domain / DuckDNS** | Anywhere | Medium (port forwarding 80/443) |
 
@@ -232,6 +234,39 @@ sudo tailscale serve --bg 7000
 ```
 
 Your addon is now at `https://<machine>.<tailnet>.ts.net`. Install with `--https none`, set `PUBLIC_URL` to that address (`sudo systemctl edit aio-streams-subtitles-greek` → `[Service]` `Environment=PUBLIC_URL=https://…`), restart, and generate the install link from `https://<machine>.<tailnet>.ts.net/configure`. Every device that runs Stremio must be on your tailnet.
+
+### Behind CGNAT with a free HTTPS hostname
+
+If you do not have an inbound-reachable public IP, a free dynamic DNS hostname alone cannot route traffic through CGNAT. [Tailscale Funnel](https://tailscale.com/docs/features/tailscale-funnel) supplies a stable `*.ts.net` HTTPS address on the free plan and works without router port forwarding or a purchased domain. Funnel URLs are public. For access only by devices on your tailnet, use [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) instead.
+
+1. Install Tailscale on the host, sign in, and enable MagicDNS, HTTPS, and Funnel in your tailnet. Replace `YOUR_HOST.YOUR_TAILNET.ts.net` below with the actual name of the host.
+2. From a checkout of the current source, configure the bundled installer with the two HTTPS origins. For a fresh install with free local ports, use:
+
+   ```bash
+   sudo bash install.sh --https none --port 7000 \
+     --public-url https://YOUR_HOST.YOUR_TAILNET.ts.net \
+     --aio-public-url https://YOUR_HOST.YOUR_TAILNET.ts.net:8443
+   ```
+
+   For the standalone PolyCue installer, pass only the subtitle options. For an existing AIOStreams deployment, enable **Auth Required** in the AIOStreams dashboard or set `AIOSTREAMS_AUTH_REQUIRED=true` before making its configuration page public. Keep your existing login and encryption key.
+
+3. Point Funnel at the local ports. If the installer reports a different AIOStreams internal port, use that port in the second command.
+
+   ```bash
+   sudo tailscale funnel --bg --https=443 http://127.0.0.1:7000
+   sudo tailscale funnel --bg --https=8443 http://127.0.0.1:3000
+   sudo tailscale funnel status
+   ```
+
+4. Open `https://YOUR_HOST.YOUR_TAILNET.ts.net/configure` for subtitles and `https://YOUR_HOST.YOUR_TAILNET.ts.net:8443/stremio/configure` for AIOStreams. Generate fresh Stremio install links when switching to the new hostname. Verify the links from a device off your home network.
+
+If you also run AIOMetadata separately, set its Compose `HOST_NAME` to `https://YOUR_HOST.YOUR_TAILNET.ts.net:10000` and point a third Funnel at its loopback HTTP port, ordinarily `3232`:
+
+```bash
+sudo tailscale funnel --bg --https=10000 http://127.0.0.1:3232
+```
+
+Funnel has bandwidth limits. Use it for add-on requests and subtitles. If you enable AIOStreams' optional video proxy, check throughput before sending playback traffic through Funnel.
 
 ### Cloudflare Tunnel
 
@@ -407,7 +442,7 @@ Then remove the addon in Stremio (**Add-ons → AIO-Streams&Subtitles-Greek → 
 | "ChatGPT/Grok sign-in has expired" | Sign in again on the configure page and reinstall the link. Sign-ins are refreshed automatically while the server runs; long downtime can expire them. |
 | Grok: "xAI did not allow this account…" | Your plan isn't enabled by xAI for app sign-in. Use an xAI API key instead. |
 | LM Studio: model doesn't load / times out | Make sure *Serve on Local Network* is on, the Base URL uses the PC's LAN IP, and the model fits in VRAM. Load it once with `lms load … --parallel 4`. |
-| The **Anywhere** link doesn't work away from home | Check the router's port forward (external port → server LAN IP, port 443) and that your public IP hasn't changed (`curl https://api.ipify.org` on the server). Some mobile/ISP networks use CGNAT — then a public IP isn't reachable and you need a tunnel (`--public-url`). |
+| The **Anywhere** link doesn't work away from home | Check the router's port forward (external port → server LAN IP, port 443) and that your public IP hasn't changed (`curl https://api.ipify.org` on the server). If your ISP uses CGNAT, use the [free HTTPS hostname option](#behind-cgnat-with-a-free-https-hostname). |
 | The **Anywhere** link doesn't work at home | Your router lacks NAT loopback — use the **Home network only** link at home, or enable NAT loopback. |
 | "Too many wrong passwords" | Wait 15 minutes; the lockout is per address. The password is in `/etc/aio-streams-subtitles-greek.env`. |
 | AIOStreams says "missing API key" when saving | An imported configuration has services or features enabled without their keys: enter your debrid API key, and either a TMDB access token or switch off title matching, year matching and the digital-release filter. The reason is in `docker logs aiostreams`. |
