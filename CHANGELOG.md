@@ -4,6 +4,8 @@ All notable changes to this project. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+- Add a guided fresh install with Tailscale Funnel for users behind CGNAT.
+
 - Offer a ready-to-select AIOStreams template for English audio and Greek subtitles on fresh installs. Provide a separate mainstream catalog template for AIOMetadata.
 - Add `--aio-public-url` for the bundled AIOStreams installer and document free HTTPS hostnames behind CGNAT.
 - Add an AIOMetadata updater that verifies a SQLite backup before updating and checks service health afterward.
