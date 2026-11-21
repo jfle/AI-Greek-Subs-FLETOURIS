@@ -237,6 +237,16 @@ Your addon is now at `https://<machine>.<tailnet>.ts.net`. Install with `--https
 
 ### Behind CGNAT with a free HTTPS hostname
 
+**Guided fresh install (bundled add-ons):**
+
+```bash
+git clone https://github.com/jfle/aio-streams-subtitles-greek.git
+cd aio-streams-subtitles-greek
+sudo bash install-funnel.sh
+```
+
+The script installs Tailscale if needed, prompts for Tailscale sign-in and Funnel approval, and prints both Stremio configuration URLs. It checks that the add-on configuration pages require authentication before it enables the public routes. AIOMetadata is a separate install. Use the manual steps below for an existing Pi setup or for AIOMetadata.
+
 If you do not have an inbound-reachable public IP, a free dynamic DNS hostname alone cannot route traffic through CGNAT. [Tailscale Funnel](https://tailscale.com/docs/features/tailscale-funnel) supplies a stable `*.ts.net` HTTPS address on the free plan and works without router port forwarding or a purchased domain. Funnel URLs are public. For access only by devices on your tailnet, use [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) instead.
 
 1. Install Tailscale on the host, sign in, and enable MagicDNS, HTTPS, and Funnel in your tailnet. Replace `YOUR_HOST.YOUR_TAILNET.ts.net` below with the actual name of the host.
